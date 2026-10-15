@@ -1,0 +1,14 @@
+{
+  "name": "@payper402/paypal-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed PayPal REST client (OAuth, Vault v3, Orders v2, Webhooks). Sandbox only.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

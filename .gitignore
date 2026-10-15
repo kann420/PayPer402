@@ -1,0 +1,33 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Secrets and local state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+keys/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+.vault-state.json
+
+# Private agent notes
+CLAUDE.local.md
+
+# Spike not yet translated and renamed
+paypal402-spike/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
