@@ -16,6 +16,7 @@
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
+    "demo": "npm run demo -w apps/agent --",
     "test:watch": "vitest"
   },
   "devDependencies": {

@@ -21,7 +21,9 @@ call.
 ```
 packages/scheme-paypal   x402 batch-settlement binding for the PayPal network
 packages/paypal-client   typed PayPal REST client (sandbox only)
-apps/                    facilitator, web app, demo seller and demo agent (added per roadmap)
+apps/facilitator         verifies and records commitments, links PayPal, settles batches
+apps/demo-seller         four paid APIs behind @x402/express (simulated data)
+apps/agent               Claude agent, CLI, MCP server and the demo command
 docs/                    roadmap, binding spec, architecture
 ```
 
@@ -48,6 +50,21 @@ npm test
 ```
 
 PayPer402 talks to the **PayPal sandbox only**. The PayPal client refuses the live API host.
+
+## Run the demo
+
+One command runs the whole story locally: the facilitator, the demo seller and a Claude agent that
+shops for paid APIs within a budget, pays per call, and explains what it spent. The calls are
+checked against the ledger and settled in one PayPal sandbox charge.
+
+```bash
+npm run demo -- --link
+```
+
+The first run prints a PayPal sandbox approval link; later runs need no `--link`. It needs the
+PayPal sandbox credentials, `DATA_ENCRYPTION_KEY`, `API_KEY_PEPPER` and Anthropic credentials in
+`.env`. See [apps/agent/README.md](apps/agent/README.md) for the options, the MCP server and the
+"Stop paying with PayPal" scene.
 
 ## License
 
