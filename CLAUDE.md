@@ -49,6 +49,9 @@ In scope:
 - A demo seller: two or three paid APIs behind `@x402/express` middleware.
 - **An LLM agent as the protagonist of the demo.** It reads 402 prices, picks paid APIs within a
   budget, pays, finishes the task, and explains what it spent.
+- A **decision layer** (Phase 3.5, added at the user's request on 2026-10-16). Before the agent
+  pays, Jev (TypeSafe) gives a calibrated second opinion on the call, and code decides. It is a
+  supporting feature, never the headline. See `docs/spec/decision-layer.md`.
 - Dashboards (AG Studio):
   - operator view: spend per agent, per API, and per day
   - seller view: revenue per endpoint and settlement status
@@ -155,6 +158,15 @@ Update this section as gates close.
 - [x] **x402 plug-in spike (passed, 2026-10-15).** A fake-settle scheme on network
   `paypal:sandbox` runs end to end through `@x402/express` and `@x402/fetch` (2.28.0). The test
   is `packages/scheme-paypal/src/plumbing.test.ts`; findings are in `docs/phase-1/BUILD_SPEC.md`.
+- [x] **Jev spike (passed, 2026-10-16).** The script is in `spikes/jev-check/`.
+  - `@typesafe-ai/sdk` 0.7.0 works with `jev-1.14.0`. That is the `jev-preview` build; `jev-latest`
+    is still `jev-1.13.0`.
+  - From Vietnam, a check takes about 300 ms at the median and 1.1–1.6 s at p95, and costs about
+    $0.00004.
+  - No false blocks on the demo sequence. The draft 1 thresholds catch nothing on 1.14, so the
+    thresholds must come from the Phase 3.5 eval.
+  - SDK timeouts apply per attempt, with no total budget. The findings are in the spike README
+    and in `docs/spec/decision-layer.md`.
 - [x] **AG Studio license (not a blocker).**
   - The sponsor answered on the hackathon Discord (Oct 2026): without a key AG Studio shows a
     watermark and a console error, and this is **not penalised in judging**.
@@ -182,6 +194,9 @@ Update this section as gates close.
 - **AI:** `@anthropic-ai/sdk`. The model comes from `ANTHROPIC_MODEL` (default
   `claude-opus-5-5`). Load the `claude-api` skill before writing any Claude code; current API
   details differ from older patterns.
+- **Decision layer:** `@typesafe-ai/sdk`, pinned at `0.7.0`, with the model pinned by id
+  (`jev-1.14.0`). Load the `typesafe:typesafe-ai` skill and read the live TypeSafe docs before
+  writing Jev code.
 - **Backend:** Express, SQLite via `better-sqlite3`, and `zod` for validation.
 - **Web:** Next.js with React.
 - **Dashboards:** `ag-studio` with `ag-studio-react` (v3). The key goes in through

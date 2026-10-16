@@ -12,12 +12,13 @@ How to use this file:
 - The dates are targets. If a phase slips by more than a day, cut scope from Phase 4 polish or
   Stretch, never from Phase 6.
 
-**Current phase: Phase 4**
+**Current phase: Phase 3.5**
 
 - Phase 1 passed its final audit on 2026-10-15.
 - Phase 2 passed its audit on 2026-10-16, and its sandbox end-to-end run passed the same day.
 - Phase 3 passed its audit on 2026-10-16, and `npm run demo -- --link` passed on the real sandbox
   the same day.
+- Phase 3.5 was inserted before Phase 4 on 2026-10-16, at the user's request.
 
 ## Overview
 
@@ -27,6 +28,7 @@ How to use this file:
 | 1. x402 binding | Oct 16–20 | Paid HTTP calls work through the official x402 SDK on `paypal:sandbox` | Innovation, Tech |
 | 2. Facilitator + PayPal settlement | Oct 20–26 | Signed commitments become real PayPal sandbox charges | Tech, Impact |
 | 3. Demo seller + AI agent | Oct 26–Nov 1 | An LLM agent shops for paid APIs within a budget | Tech (AI), Innovation |
+| 3.5. Decision layer (Jev) | Oct 16–22 | A calibrated second opinion before each paid call | Tech (AI), Innovation |
 | 4. Web app + AG Studio dashboards | Nov 1–6 | Judges can do everything in a browser | Design, AG Studio prize |
 | 5. Hosting + hardening | Nov 6–9 | A public demo that stays up through Dec 15 | Design, Tech |
 | 6. Submission | Nov 9–11 | Video, write-up, testing instructions, submit | Presentation |
@@ -135,6 +137,41 @@ sandbox wallet.
   a short "thinking" note before the first call and the spend explanation stays in English
   whatever the task's language. This is a spec change and goes through review.
 
+## Phase 3.5: Decision layer with Jev (Oct 16–22)
+
+Goal: before the agent signs a payment, Jev (TypeSafe's System One model) judges whether the
+call serves the task and whether its result is already in hand. Code decides with fixed
+thresholds. This is a supporting feature, never the headline; the budget and caps stay the hard
+guards. The design is in `docs/spec/decision-layer.md`.
+
+- [x] **Jev spike (`spikes/jev-check/`, 2026-10-16).** `@typesafe-ai/sdk` 0.7.0 and `jev-1.14.0`
+  work as the spec needs. Its findings are folded into draft 2 of the design spec.
+- [x] Design spec `docs/spec/decision-layer.md` passes review. It passed in round 3 (draft 4) on
+  2026-10-16.
+- [ ] Build spec `docs/phase-3.5/BUILD_SPEC.md` passes review. The design review left two notes
+  for it:
+  - Name which tuning runs §7.3 step 4 re-checks: the run that set the thresholds, or the tuning
+    runs of the `--holdout` run.
+  - The eval calls `check(input, signal)` directly. It must pass
+    `AbortSignal.timeout(CHECK_DEADLINE_MS)` and measure latency itself, so its numbers match
+    production.
+- [ ] `apps/agent`:
+  - the `SpendCheck` interface and its Jev implementation, pinned to `jev-1.14.0`
+  - the call registry, with the exact-duplicate and repeat rules
+  - the policy with per-rule modes, the payer-owned deadline, and fail-open
+- [ ] Events, report, CLI and demo changes; the agent.md amendments (design spec §9).
+- [ ] The evaluation script (`npm run eval:spend-check -w apps/agent`) on both `jev-1.14.0` and
+  `jev-1.13.0`. The wording, thresholds, modes and pin are recorded in the spec.
+
+**Done when:**
+
+- The evaluation procedure (design spec §7.3) has run on both models, and its results are recorded.
+  If no rule meets the bar, the layer ships with both rules in observe mode, as the spec allows.
+- `npm run demo` against the real sandbox shows a Jev check on every paid call.
+- With the layer off (no key, or `--no-spend-check`), every Phase 3 test and behaviour is
+  unchanged.
+- The audit passes.
+
 ## Phase 4: Web app + AG Studio dashboards (Nov 1–6)
 
 Goal: a complete product a judge can use without a terminal.
@@ -165,7 +202,9 @@ Goal: a public demo that keeps working through judging (Dec 1–15) with nobody 
 - [ ] Rate limits, input validation, and friendly error and empty states.
 - [ ] Security pass: secrets only in env, sandbox guard, and no key in the browser.
 - [ ] README: what it is, architecture diagram, local setup, and how to run the demo.
-- [ ] Uptime check that keeps the demo alive until Dec 15.
+- [ ] Uptime check that keeps the demo alive until Dec 15. It includes one Jev request, so a
+  withdrawn model or an exhausted key shows up (decision-layer spec §5).
+- [ ] A TypeSafe API key of PayPer402's own for the hosted demo.
 
 **Done when:** a fresh browser session on the public URL completes the Phase 4 flow, and the
 README setup works from a clean clone.
