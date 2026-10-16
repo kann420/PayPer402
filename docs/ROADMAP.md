@@ -12,7 +12,10 @@ How to use this file:
 - The dates are targets. If a phase slips by more than a day, cut scope from Phase 4 polish or
   Stretch, never from Phase 6.
 
-**Current phase: Phase 2** (Phase 1 passed the final audit on 2026-10-15)
+**Current phase: Phase 3**
+
+- Phase 1 passed its final audit on 2026-10-15.
+- Phase 2 passed its audit on 2026-10-16, and its sandbox end-to-end run passed the same day.
 
 ## Overview
 
@@ -69,13 +72,13 @@ cases.
 
 Goal: commitments turn into real PayPal sandbox charges, safely.
 
-- [ ] `packages/paypal-client`:
+- [x] `packages/paypal-client`:
   - OAuth with a cached token.
   - Vault v3: create a setup token, exchange it for a payment token, get and delete tokens.
   - Orders v2: create and capture with `vault_id`. Use `PayPal-Request-Id` for idempotency.
   - Typed errors for `AGREEMENT_ALREADY_CANCELLED` and `TOKEN_NOT_FOUND`.
   - Webhook signature verification.
-- [ ] `apps/facilitator` (Express + SQLite):
+- [x] `apps/facilitator` (Express + SQLite):
   - Data model: operators, agents (public keys), wallets (`vault_id`, status), caps, commitments,
     settlements, audit log.
   - x402 facilitator HTTP endpoints (`/verify`, `/settle`, `/supported`) backed by
@@ -89,8 +92,12 @@ Goal: commitments turn into real PayPal sandbox charges, safely.
       its agents get `402`.
     - The `VAULT.PAYMENT-TOKEN.DELETED` webhook does the same immediately.
   - Port the earlier event bus, webhook signer, and audit helpers where they save time.
-- [ ] Sandbox integration script: link a wallet, make N paid calls, check that settlement creates
-  one PayPal order equal to their sum, revoke, then check the next call is refused.
+- [x] Sandbox integration script (`apps/facilitator/scripts/sandbox-e2e.ts`): link a wallet, make N
+  paid calls, check that settlement creates one PayPal order equal to their sum, revoke, then
+  check the next call is refused.
+  - **PASS on the real sandbox, 2026-10-16:** 3 × 5-cent calls were settled as one 15-cent capture.
+  - After the payer stopped the agreement in Autopay, the health check marked the wallet
+    `stopped_by_payer`, and the next call got `402 invalid_batch_settlement_paypal_wallet_revoked`.
 
 **Done when:** the integration script passes against the real sandbox, and the PayPal sandbox
 Business account shows the settlement capture.

@@ -1,0 +1,29 @@
+{
+  "name": "@payper402/facilitator",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PayPer402 facilitator: verifies and records commitments, links PayPal wallets, and settles batches with PayPal.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
+    "start": "tsx --env-file-if-exists=../../.env src/server.ts",
+    "seed": "tsx --env-file-if-exists=../../.env scripts/seed.ts",
+    "sandbox-e2e": "tsx --env-file-if-exists=../../.env scripts/sandbox-e2e.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@payper402/paypal-client": "*",
+    "@payper402/scheme-paypal": "*",
+    "@x402/core": "2.28.0",
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/express": "^5.0.6",
+    "@x402/express": "2.28.0",
+    "@x402/fetch": "2.28.0"
+  }
+}
