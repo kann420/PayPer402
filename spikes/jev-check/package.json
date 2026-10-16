@@ -1,0 +1,16 @@
+{
+  "name": "@payper402/spike-jev-check",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Spike: check the TypeSafe JavaScript SDK and Jev 1.14 against the decision-layer spec before Phase 3.5.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "spike": "tsx --env-file-if-exists=../../.env jev-check.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@payper402/demo-seller": "*",
+    "@typesafe-ai/sdk": "0.7.0"
+  }
+}
