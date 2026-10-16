@@ -12,10 +12,12 @@ How to use this file:
 - The dates are targets. If a phase slips by more than a day, cut scope from Phase 4 polish or
   Stretch, never from Phase 6.
 
-**Current phase: Phase 3**
+**Current phase: Phase 4**
 
 - Phase 1 passed its final audit on 2026-10-15.
 - Phase 2 passed its audit on 2026-10-16, and its sandbox end-to-end run passed the same day.
+- Phase 3 passed its audit on 2026-10-16, and `npm run demo -- --link` passed on the real sandbox
+  the same day.
 
 ## Overview
 
@@ -124,6 +126,14 @@ for, pays, and explains its spending.
 **Done when:** one command runs the full story against local services. The transcript shows the
 agent choosing within its budget, the ledger matches the calls, and a settlement charges the
 sandbox wallet.
+
+- **PASS on the real sandbox, 2026-10-16** (`npm run demo -- --link`, Claude Sonnet 5.5):
+  - The agent paid for a quote, a summary and a translation (3 calls, $0.08) and skipped
+    Premium News ($0.25, above the $0.10 per-call limit).
+  - The ledger matched the 3 commitments, and one PayPal order captured exactly $0.08.
+- Carried into Phase 4: tune the agent's system prompt (design spec §6.2), so the timeline gets
+  a short "thinking" note before the first call and the spend explanation stays in English
+  whatever the task's language. This is a spec change and goes through review.
 
 ## Phase 4: Web app + AG Studio dashboards (Nov 1–6)
 
