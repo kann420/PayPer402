@@ -118,6 +118,28 @@ The phased build plan is in `docs/ROADMAP.md`. Read it at the start of each sess
 **Current phase**, tick tasks as they land, and move the marker when a phase's "Done when" check
 passes. Do not start work from a later phase without asking.
 
+## Development process (every phase)
+
+1. **Spec.** The main session writes the specs:
+   - a protocol or design spec under `docs/spec/`, if the phase has one
+   - a build spec at `docs/phase-N/BUILD_SPEC.md`
+2. **Review loop.** An independent reviewer (Claude Fable 5.1) reviews the specs against the
+   code, the SDKs and this file.
+   - If the verdict is anything other than a clean **PASS**, rewrite the specs and send them back
+     to review.
+   - **Repeat until the reviewer returns PASS.** Fixing the findings yourself and going straight
+     to build is not allowed.
+3. **Build.** A builder (Claude Opus 5.5, high effort) implements the passed build spec. It does
+   not commit or push.
+4. **Audit loop.** The reviewer audits the implementation.
+   - If the verdict is anything other than a clean **PASS**, the builder fixes the findings and
+     the work goes back to audit.
+   - **Repeat until the auditor returns PASS.** Fixes made after an audit are always re-audited.
+5. **Verify and commit.**
+   - The main session re-runs typecheck, tests and the private pre-commit checks itself.
+   - It proposes commits grouped by concern, and commits only when the user says so.
+6. **Close the phase.** Move the roadmap marker only after the audit has passed.
+
 ## Status and open gates
 
 Update this section as gates close.
