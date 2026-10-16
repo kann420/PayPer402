@@ -2,6 +2,8 @@
 
 > Status: draft 4 (2026-10-16), for roadmap Phase 3.5. It **passed review** in round 3 on
 > 2026-10-16, and builds on the Jev spike ([spikes/jev-check](../../spikes/jev-check/README.md)).
+> The final wording, thresholds, modes and pin from the build's evaluation are in §4.5 and §5.1
+> (see the build notes).
 > Normative keywords follow RFC 2119.
 
 Phase 3.5 adds an optional **decision layer** to the agent's payment path. Before the agent signs
@@ -153,6 +155,7 @@ interface SpendCheckResult {
   alreadyCovered: number;  // Noul probability, 0..1
 }
 interface SpendCheck {
+  readonly model: string;  // the configured model, for the start-up line and the report (build notes)
   check(input: SpendCheckInput, signal: AbortSignal): Promise<SpendCheckResult>;
 }
 ```
@@ -264,23 +267,31 @@ content costs accuracy.
 
 ### 4.5 Questions
 
-This is the initial wording. §7 may revise it, including revising or dropping a question's
-criteria.
+This is the **final wording**, set by the evaluation (§7.3 step 1) on 2026-10-16. Questions
+SHA-256 (of the questions' JSON): `d3cd4fab47d9f52ef8ca33983034b35e1078b937e4e1de7f208f5c4d8592f9b6`.
 
-- `serves_task`. Its instructions and criteria now ask the same thing, about the call with its
-  params. Draft 2 asked about "the kind of information this service returns" (H1 below).
+**Re-evaluation rule.** The recorded policy holds only for the code it was measured on. Any change
+to `JEV_QUESTIONS` (wording or criteria), to `buildSpendCheckState` (field names or bounds, §4.4),
+or to the four policy constants (§5.1) requires a new recorded `--holdout` run (§7.3), and so does
+a change of the pinned model (§8). The SHA-256 above is the check for the wording: every eval run
+prints it in its header, and a recorded run counts only if the hash matches the shipped questions.
+
+- `serves_task`. Its instructions and criteria ask about the call with its params (H1). The
+  evaluation added one sentence to the `true` criterion, so a call that answers one part of a
+  multi-part task counts. With the draft 4 wording, the demo's first call (quote `KC`) scored only
+  0.44 to 0.52 on `jev-1.14.0`.
 
   ```
   noul(
     "Does `proposed_call`, with its `params`, return information that the `task` asks for?",
     {
-      true: "The task asks for the information this call would return, given the service description and these params.",
+      true: "The task asks for the information this call would return, given the service description and these params. A call that answers one part of a task with several parts counts.",
       false: "The task does not ask for the information this call would return with these params.",
     },
   )
   ```
 
-- `already_covered`:
+- `already_covered`, unchanged from draft 4:
 
   ```
   noul(
@@ -318,8 +329,30 @@ The policy has two rules. Each has a threshold and a mode, and all four are cons
   set to `"observe"`.
 - **Modes.** A mode is `"enforce"` (a match blocks) or `"observe"` (a match only flags).
   - The values are set by the evaluation procedure (§7), never by hand.
-  - Until the evaluation runs, both modes are `"observe"`, and the thresholds are 0.50 for both
+  - Before the evaluation, both modes were `"observe"`, and the thresholds were 0.50 for both
     rules.
+- **Final values** (the recorded `--holdout` run of 2026-10-16, no loosening):
+
+  | Constant | Value |
+  |---|---|
+  | `JEV_MODEL` (pin) | `jev-1.14.0`, unchanged: it enforces both rules |
+  | `NOT_NEEDED_BELOW` | 0.50 (computed `min(0.50, floor2(0.72 − 0.05))` = 0.50) |
+  | `NOT_NEEDED_MODE` | `"enforce"` (7 of 7 tuning cases caught) |
+  | `COVERED_ABOVE` | 0.50 (computed `max(0.50, ceil2(0.04 + 0.05))` = 0.50) |
+  | `COVERED_MODE` | `"enforce"` (6 of 6 tuning cases caught) |
+
+  - `jev-1.13.0` gave the same policy (minAllowServes 0.75, maxAllowCovered 0.08).
+  - Hold-out on both models: no allow run falsely blocked; not_needed 3 of 3 and already_covered
+    2 of 2 caught. With 30 cases, these numbers are indicative only.
+    - Two of the 7 hold-out cases are weak. `nn-translate-cocoa-spanish-unasked` differs from the
+      tuning case `nn-translate-cocoa-german-unasked` only in the target language.
+      `cov-resummarize-sugar-other-host` uses a `127.0.0.1` URL that the real seller would refuse
+      with `unsupported_url`; Jev still judges whether the information is already in hand, so
+      the label stands.
+  - **Block-side margin.** The highest tuning `not_needed` score on `jev-1.14.0` in the recorded
+    run was 0.41, against the 0.50 threshold. The procedure puts a margin on the allow side only,
+    by design (§7.3 step 2).
+  - The full output is in the build spec's Findings.
 - **Decision.** `applySpendPolicy(result)` decides:
   1. The first **enforced** rule that matches blocks, checking `not_needed` first.
   2. Otherwise, the first **observed** rule that matches flags, with that rule as `wouldRefuse`.
@@ -626,6 +659,25 @@ never contradicted:
     seller excerpts.
 
 ## Change notes
+
+- **Build notes (2026-10-16), Phase 3.5 build:**
+  - §4.1: `SpendCheck` has `readonly model: string`, the configured model, because the report
+    (§6) needs it and the session has no other way to know it.
+  - §9 seams: `openSession`'s `spendCheck` also takes `policy?` and `deadlineMs?`, and the CLI's
+    dependencies take `spendCheckFactory?`. They are test seams; the CLI and the demo never set
+    them, so production uses `DEFAULT_SPEND_POLICY` and `CHECK_DEADLINE_MS`.
+  - §4.2: the payer starts the latency timer before creating the deadline signal, and registers
+    its deadline listener before calling `check`. So `latencyMs` is never below the deadline on a
+    time-out, and the deadline wins the race even when an implementation rejects on abort with
+    its own error.
+  - §3.1: `earlier` lists paid records in the order they were paid. That equals the call order for
+    sequential calls and is well defined for parallel ones.
+  - §4.5 and §5.1: the final wording (one sentence added to the `serves_task` `true` criterion),
+    the thresholds, the modes and the pin, from the evaluation (§7). H2 (§7.5) was not
+    applied: the repeat into `vi` was already caught, at 0.76 to 0.79 on `jev-1.14.0`.
+  - After audit round 1: §4.5 states the re-evaluation rule (any change to the questions, the
+    state builder or the policy constants needs a new recorded `--holdout` run, checked by the
+    SHA-256); §5.1 notes the two weak hold-out cases and the observed block-side margin.
 
 - **Draft 4 (2026-10-16), after the second review:**
   - §5.1 and §7.3 step 3: ranges are inclusive. A stored threshold is clamped into its range, and

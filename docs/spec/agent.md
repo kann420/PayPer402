@@ -1,6 +1,8 @@
 # PayPer402 demo seller and agent: design spec
 
 > Status: draft 3 (2026-10-16), for roadmap Phase 3. Normative keywords follow RFC 2119.
+> Amended for Phase 3.5 by the decision-layer spec ([decision-layer.md](decision-layer.md) §9); see
+> the build notes (Phase 3.5).
 
 Phase 3 builds the story the judges watch: an AI agent finds paid APIs, decides what is worth
 paying for, pays per call over HTTP 402, and explains what it spent. The money moves through the
@@ -300,8 +302,14 @@ process is one session. Both use the same core.
 openSession({
   sellerUrl, privateKey, budgetCents, maxPerCallCents,
   fetch?, nowSeconds?, onEvent?,
+  spendCheck?: { checker: SpendCheck; task: string },   // Phase 3.5, decision-layer.md
 }): Promise<AgentSession>
 ```
+
+- **Decision layer (Phase 3.5).** `spendCheck` enables the decision layer
+  ([decision-layer.md](decision-layer.md)). `task` is the same string the agent runs. With the
+  layer enabled, the session also keeps the call registry (decision-layer.md §3.1). Without
+  `spendCheck`, every behaviour in this spec is unchanged.
 
 - `nowSeconds` returns unix **seconds**. It is passed to `PayPalBatchClientScheme` as its `now`,
   so it sets the commitments' `iat` and `exp`. It defaults to the system clock.
@@ -398,6 +406,14 @@ below.
    - If `price > maxPerCallCents`, emit `refused` with `over_per_call_limit`.
    - Reserve `price` in the budget (§4.4). If that fails, emit `refused` with `over_budget`.
    - Otherwise emit `decided`, with the model's `reason` as `note`.
+   - **With the decision layer enabled**, this step follows the order of decision-layer.md §3.2:
+     - the registry checks (exact duplicates and repeats of a Jev block) come before the
+       reservation
+     - the Jev check is awaited after the reservation, bounded by the payer-owned deadline (§4.2
+       there)
+     - `decided` is emitted after that await, with the check attached
+
+     With the layer off, `decided` stays where this step emits it.
 5. **Sign.**
    - The `x402Client` built for this call in step 1 has:
      - register `PayPalBatchClientScheme` (the session's key) on `paypal:*`
@@ -507,6 +523,18 @@ uses it verbatim.
   `unknown_agent` set the session to **blocked**. Every later `call` is answered locally with
   `payments_blocked`, so a revoked operator causes exactly one refused row.
 
+**Decision-layer refusals (Phase 3.5).** These come from decision-layer.md §6, all with `by:
+"agent"`, and none is blocking:
+
+| `code` | Source | Note |
+|---|---|---|
+| `duplicate_call` | the call registry: the same service and params are paid, in flight or of unknown outcome | "This exact call was already made in this run" |
+| `not_needed` | the `not_needed` rule, enforced | "The decision layer judged this call not needed for the task" |
+| `already_covered` | the `already_covered` rule, enforced | "The decision layer judged this information already obtained" |
+
+An exact retry of a Jev-blocked call is refused with the same code and note, with `detail` "Same as
+<callId>". Jev is not asked again, and nothing is reserved.
+
 ### 4.6 Events (the Phase 4 contract)
 
 ```ts
@@ -527,6 +555,8 @@ type AgentEvent =
   | { type: 'result'; at: number; status: RunStatus; answer: string; report: SpendReport };
 ```
 
+- **Phase 3.5:** `decided` and `refused` gain an optional `check?: SpendCheckSummary`
+  (decision-layer.md §6). It is absent when the decision layer is off.
 - The UI brief's step types are `thinking`, `discovered_price`, `decided`, `paid`, `result` and
   `refused`. `started` (the run header) and `failed` (errors that are not payment refusals) are
   added.
@@ -561,6 +591,8 @@ interface SpendReport {
 - `commitmentIds` are the non-null commitment ids of the `paid` events. The demo command checks
   them against the facilitator's ledger.
 - `explanation` is the model's paragraph (§6), or `""`.
+- **Phase 3.5:** an optional `decisionLayer` field (decision-layer.md §6) is present only when the
+  layer was enabled.
 - Every number in the report comes from code. None is taken from the model.
 
 ## 5. Tools
@@ -736,7 +768,7 @@ At the end, `runAgent` emits `result` with the status, the answer and `session.r
 
 ## 7. CLI
 
-`npm run agent -w apps/agent -- [--budget 1.00] [--max-per-call 0.10] "<task>"`
+`npm run agent -w apps/agent -- [--budget 1.00] [--max-per-call 0.10] [--no-spend-check] "<task>"`
 
 **Environment:**
 
@@ -755,6 +787,14 @@ At the end, `runAgent` emits `result` with the status, the answer and `session.r
 - It prints each event as one line with an ASCII tag, `[start]`, `[think]`, `[402]`,
   `[decide]`, `[paid]`, `[refused]`, `[failed]`, followed by the answer and the spend report
   table. ASCII keeps the output readable in any Windows console.
+- **Decision layer (Phase 3.5, decision-layer.md §2 and §6):**
+  - `TYPESAFE_API_KEY` enables it, and `--no-spend-check` turns it off.
+  - One start-up line is printed before the session opens, for example "Decision layer: Jev
+    (jev-1.14.0) on" or "Decision layer: off (no TYPESAFE_API_KEY)".
+  - `[decide]` and `[refused]` lines end with ` | ` and the check, for example ` | Jev: serves task
+    0.78, covered 0.03`.
+  - After the spend report: `Decision layer: Jev (<model>): N passed, N blocked, N flagged, N
+    unavailable`.
 - **Exit codes:** 0 when the status is `completed`, 1 otherwise. Configuration errors exit 1 with
   a message and print no secrets.
 
@@ -782,6 +822,8 @@ over the tool core of §5. `@x402/mcp` is not a dependency.
 - Clients start it with `npm run --silent mcp`: without `--silent`, npm prints its script banner
   to stdout, which breaks the protocol.
 - **Results:** `{ content: [{ type: "text", text: <JSON> }] }`, with `isError: true` for failures.
+- **No decision layer.** The decision layer does not run in the MCP server: an MCP session has no
+  task to judge against (decision-layer.md §2).
 - **Logging:** stdout carries only the MCP protocol. Events are logged to stderr as one line
   each.
 - **Annotations:**
@@ -790,7 +832,7 @@ over the tool core of §5. `@x402/mcp` is not a dependency.
 
 ## 9. Demo command
 
-`npm run demo -- [--link] [--no-settle] [--budget 1.00] ["<task>"]` runs the whole story in one
+`npm run demo -- [--link] [--no-settle] [--no-spend-check] [--budget 1.00] ["<task>"]` runs the whole story in one
 process against the real PayPal sandbox and the real Anthropic API. It is the roadmap's Phase 3
 "Done when".
 
@@ -846,6 +888,9 @@ It fails fast and lists what is missing.
      `min(perCall, budget)`, so the session limits stay valid
    
    Print the timeline live, then the answer and the spend report.
+   - **Phase 3.5:** right under the "Agent run" line, print the decision layer's start-up line
+     (indented, as `   Decision layer: …`). `--no-spend-check` turns the layer off. With the layer
+     on, each paid call's `[decide]` line shows its Jev check.
 7. **Ledger check.**
    - `GET /v1/commitments?agentId=<id>&since=<run start, seconds>&limit=500`.
    - The set of returned ids MUST equal the report's `commitmentIds`.
@@ -905,6 +950,14 @@ The demo never prints API keys, the agent private key, vault ids or payment head
 - **Sandbox only:** the facilitator's PayPal client still refuses the live host.
 
 ## Change notes
+
+- **Build notes (Phase 3.5, 2026-10-16):** the decision-layer amendments of decision-layer.md §9
+  are applied to §4, §4.3 step 4, §4.5, §4.6, §4.7, §7, §8 and §9. Text is extended, never
+  contradicted.
+  - Test seams: `openSession`'s `spendCheck` also takes `policy?` and `deadlineMs?`, and the CLI's
+    `CliDeps` takes `spendCheckFactory?`. The CLI and the demo never set them.
+  - `SpendCheck` has `readonly model: string`, the configured model shown in the start-up line
+    and the report.
 
 - **Build notes (2026-10-16), Phase 3 build:**
   - §5 and §8: the tool schemas are hand-written JSON Schemas, validated in code with our own zod.

@@ -12,13 +12,15 @@ How to use this file:
 - The dates are targets. If a phase slips by more than a day, cut scope from Phase 4 polish or
   Stretch, never from Phase 6.
 
-**Current phase: Phase 3.5**
+**Current phase: Phase 4**
 
 - Phase 1 passed its final audit on 2026-10-15.
 - Phase 2 passed its audit on 2026-10-16, and its sandbox end-to-end run passed the same day.
 - Phase 3 passed its audit on 2026-10-16, and `npm run demo -- --link` passed on the real sandbox
   the same day.
-- Phase 3.5 was inserted before Phase 4 on 2026-10-16, at the user's request.
+- Phase 3.5 was inserted before Phase 4 on 2026-10-16, at the user's request. It passed its
+  audit on 2026-10-16, and `npm run demo` passed on the real sandbox the same day, with a Jev check
+  on every paid call.
 
 ## Overview
 
@@ -148,19 +150,14 @@ guards. The design is in `docs/spec/decision-layer.md`.
   work as the spec needs. Its findings are folded into draft 2 of the design spec.
 - [x] Design spec `docs/spec/decision-layer.md` passes review. It passed in round 3 (draft 4) on
   2026-10-16.
-- [ ] Build spec `docs/phase-3.5/BUILD_SPEC.md` passes review. The design review left two notes
-  for it:
-  - Name which tuning runs §7.3 step 4 re-checks: the run that set the thresholds, or the tuning
-    runs of the `--holdout` run.
-  - The eval calls `check(input, signal)` directly. It must pass
-    `AbortSignal.timeout(CHECK_DEADLINE_MS)` and measure latency itself, so its numbers match
-    production.
-- [ ] `apps/agent`:
+- [x] Build spec `docs/phase-3.5/BUILD_SPEC.md` passes review. It passed in round 2 (draft 2) on
+  2026-10-16, with the design review's two notes folded into Milestone 5.
+- [x] `apps/agent`:
   - the `SpendCheck` interface and its Jev implementation, pinned to `jev-1.14.0`
   - the call registry, with the exact-duplicate and repeat rules
   - the policy with per-rule modes, the payer-owned deadline, and fail-open
-- [ ] Events, report, CLI and demo changes; the agent.md amendments (design spec §9).
-- [ ] The evaluation script (`npm run eval:spend-check -w apps/agent`) on both `jev-1.14.0` and
+- [x] Events, report, CLI and demo changes; the agent.md amendments (design spec §9).
+- [x] The evaluation script (`npm run eval:spend-check -w apps/agent`) on both `jev-1.14.0` and
   `jev-1.13.0`. The wording, thresholds, modes and pin are recorded in the spec.
 
 **Done when:**
@@ -171,6 +168,14 @@ guards. The design is in `docs/spec/decision-layer.md`.
 - With the layer off (no key, or `--no-spend-check`), every Phase 3 test and behaviour is
   unchanged.
 - The audit passes.
+
+- **PASS on the real sandbox, 2026-10-16** (`npm run demo`, Claude Sonnet 5.5, `jev-1.14.0`):
+  - Three paid calls: quote, summary and the Vietnamese translation. Their Jev checks passed with
+    serves task 0.96, 0.93 and 0.91, and covered 0.01, 0.03 and 0.03.
+  - Nothing was blocked, flagged or unavailable.
+  - The ledger matched the 3 commitments, and one PayPal order captured exactly $0.08.
+- The eval's recorded run enforces both rules at 0.50, and the audit passed in round 2. There are
+  707 tests (586 in Phase 3).
 
 ## Phase 4: Web app + AG Studio dashboards (Nov 1–6)
 
