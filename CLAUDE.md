@@ -122,7 +122,7 @@ passes. Do not start work from a later phase without asking.
 
 Update this section as gates close.
 
-- [x] **Vault spike (passed on sandbox, 2026-10-15).** The script is in `paypal402-spike/`.
+- [x] **Vault spike (passed on sandbox, 2026-10-15).** The script is in `spikes/vault-charge/`.
   - Save once, then charge many times with no payer present, under `IMMEDIATE`: $1.00 and $2.50.
   - The same under `UNSCHEDULED_POSTPAID`: $1.00, $2.50 and $0.75, with and without
     `stored_credential`.
@@ -130,10 +130,9 @@ Update this section as gates close.
     with `TOKEN_NOT_FOUND`. This is the expected outcome, even though the script prints "FAIL".
   - The app's token has the `vault/payment-tokens/readwrite` and `billing-agreements` scopes.
   - Sandbox credentials live in the root `.env`, which is gitignored and shared by all apps.
-- [ ] **x402 plug-in spike:** a custom fake-settle scheme on network `paypal:sandbox`, running end
-  to end through `@x402/express` and `@x402/fetch`. The interfaces are known
-  (`SchemeNetworkClient`, `SchemeNetworkServer`, `SchemeNetworkFacilitator`;
-  `x402Facilitator.register(network, impl)`), but this has not been run.
+- [x] **x402 plug-in spike (passed, 2026-10-15).** A fake-settle scheme on network
+  `paypal:sandbox` runs end to end through `@x402/express` and `@x402/fetch` (2.28.0). The test
+  is `packages/scheme-paypal/src/plumbing.test.ts`; findings are in `docs/phase-1/BUILD_SPEC.md`.
 - [x] **AG Studio license (not a blocker).**
   - The sponsor answered on the hackathon Discord (Oct 2026): without a key AG Studio shows a
     watermark and a console error, and this is **not penalised in judging**.

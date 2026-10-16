@@ -12,7 +12,7 @@ How to use this file:
 - The dates are targets. If a phase slips by more than a day, cut scope from Phase 4 polish or
   Stretch, never from Phase 6.
 
-**Current phase: Phase 1**
+**Current phase: Phase 2** (Phase 1 passed the final audit on 2026-10-15)
 
 ## Overview
 
@@ -32,7 +32,7 @@ How to use this file:
   (`UNSCHEDULED_POSTPAID`), and that payer revocation blocks further charges.
 - [x] Project instructions, MIT license, `.gitignore`, sandbox `.env`.
 - [x] npm workspaces monorepo: TypeScript, Vitest, shared `tsconfig`.
-- [ ] Translate the vault spike to English, rename it, and move it to `spikes/vault-charge/`.
+- [x] Translate the vault spike to English, rename it, and move it to `spikes/vault-charge/`.
 - [ ] First commit and a GitHub repository. It may stay private until submission, but it must be
   public by Nov 11.
 - [ ] CI (GitHub Actions): typecheck, tests, and a secret scan on every push.
@@ -44,22 +44,22 @@ How to use this file:
 Goal: the PayPal network plugs into the official x402 SDK, the same way the EVM and Solana
 networks do.
 
-- [ ] **Plug-in spike:** a fake-settle scheme on `paypal:sandbox`, run end to end through
+- [x] **Plug-in spike:** a fake-settle scheme on `paypal:sandbox`, run end to end through
   `@x402/express` (server) and `@x402/fetch` (client). Closes the "x402 plug-in" gate in
   `CLAUDE.md`.
-- [ ] Commitment format:
-  - The agent signs with Ed25519 over a canonical payload: payer id, resource, amount in cents,
-    asset, network, nonce, and expiry.
-  - Replay protection uses the nonce and the expiry.
-- [ ] `packages/scheme-paypal`:
+- [x] Commitment format, as defined in `docs/spec/scheme_batch_settlement_paypal.md`:
+  - The agent signs with Ed25519 over a canonical commitment: id (nonce), key id, network, asset,
+    payTo, max amount in cents, issued-at, and expiry.
+  - Replay protection uses the unique id; the expiry bounds how long a commitment can be used.
+- [x] `packages/scheme-paypal`:
   - **Client:** `createPaymentPayload` signs commitments.
   - **Server:** builds `PaymentRequirements` with the price in USD cents.
   - **Facilitator:**
     - `verify` checks the signature, expiry, nonce and caps.
     - `settle` records the commitment in a ledger interface and moves no money yet.
-- [ ] Binding spec draft, `docs/spec/scheme_batch_settlement_paypal.md`, in the style of the x402
+- [x] Binding spec draft, `docs/spec/scheme_batch_settlement_paypal.md`, in the style of the x402
   scheme specs: purpose, payload, verification, settlement, and error codes.
-- [ ] Unit tests: valid payment, bad signature, expired, replayed, over cap.
+- [x] Unit tests: valid payment, bad signature, expired, replayed, over cap.
 
 **Done when:** a local Express route answers `402`, a fetch client pays it automatically, the
 route serves the data, and the in-memory ledger shows the commitment. Tests cover the failure
