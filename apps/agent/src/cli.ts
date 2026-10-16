@@ -3,7 +3,9 @@ import { runAgent } from './agent';
 import { CatalogError } from './catalog';
 import { ConfigError, loadAgentConfig } from './config';
 import { formatEvent, formatReport } from './format';
+import { createJevSpendCheck } from './jev';
 import { openSession } from './session';
+import { setupDecisionLayer, type SpendCheckFactory } from './spend-check';
 
 export interface CliIo {
   out(line: string): void;
@@ -15,6 +17,8 @@ export interface CliDeps {
   anthropic?: Anthropic;
   fetch?: typeof fetch;
   signal?: AbortSignal;
+  /** Builds the decision layer's checker. A test seam; defaults to the Jev implementation. */
+  spendCheckFactory?: SpendCheckFactory;
 }
 
 /**
@@ -29,6 +33,8 @@ export async function runCli(argv: string[], env: Record<string, string | undefi
     io.err(err instanceof ConfigError ? err.message : 'Invalid configuration');
     return 1;
   }
+  const layer = setupDecisionLayer(config.decisionLayer, deps.spendCheckFactory ?? createJevSpendCheck);
+  io.out(layer.line);
   let session;
   try {
     session = await openSession({
@@ -40,6 +46,7 @@ export async function runCli(argv: string[], env: Record<string, string | undefi
       onEvent: (event) => {
         if (event.type !== 'result') io.out(formatEvent(event));
       },
+      ...(layer.spendCheck === undefined ? {} : { spendCheck: { checker: layer.spendCheck, task: config.task } }),
     });
   } catch (err) {
     io.err(err instanceof CatalogError ? err.message : 'Could not open the session');

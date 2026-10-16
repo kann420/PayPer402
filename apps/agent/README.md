@@ -18,7 +18,7 @@ amount or a recipient: services are named by catalog ids.
 ## CLI
 
 ```bash
-npm run agent -w apps/agent -- [--budget 1.00] [--max-per-call 0.10] "<task>"
+npm run agent -w apps/agent -- [--budget 1.00] [--max-per-call 0.10] [--no-spend-check] "<task>"
 ```
 
 The seller and the facilitator must already be running (or use `npm run demo`).
@@ -39,6 +39,46 @@ exit code is 0 when the run completed, 1 otherwise.
 The agent uses the SDK's tool runner with adaptive thinking (`display: "updates"`, so the notes
 between tool calls become `[think]` rows), effort `medium`, server-side fallbacks and prompt
 caching. It stops itself at 12 model messages, before any tool of the last message runs.
+
+## Decision layer
+
+Before the agent signs a payment, Jev (TypeSafe's System One model, pinned to `jev-1.14.0`) gives a
+calibrated second opinion: does this call serve the task, and is its result already in hand? Code
+turns the two probabilities into pass, flag or refuse with fixed thresholds, while the budget and
+the caps stay the hard guards and any Jev failure lets the call proceed.
+
+The design is in [docs/spec/decision-layer.md](../../docs/spec/decision-layer.md).
+
+- `TYPESAFE_API_KEY` (root `.env`) enables it for the CLI and the demo command; `--no-spend-check`
+  turns it off. The MCP server never runs it (it has no task).
+- **What is sent to TypeSafe:** the task text, the proposed call's catalog description and params,
+  and bounded excerpts (at most 600 characters each) of this run's earlier seller responses. Never
+  keys, payment headers or operator data.
+- With the layer on, an exact repeat of a paid, in-flight or uncertain call is refused locally
+  (`duplicate_call`), and an exact retry of a call Jev refused gets the same refusal.
+
+Start-up line, then the check on each `[decide]` or `[refused]` line, then a summary after the
+spend report:
+
+```
+Decision layer: Jev (jev-1.14.0) on
+Decision layer: off (no TYPESAFE_API_KEY)
+[decide] call_2 pay $0.05 for Page Summary API: <reason> (left after this: $0.93) | Jev: serves task 0.78, covered 0.03
+[decide] ... | Jev would refuse (not_needed, serves task 0.12), observe-only
+[decide] ... | Jev unavailable (timed out)
+[refused] call_3 Market Quote API: The decision layer judged this call not needed for the task (not_needed, by agent) | Jev: serves task 0.12
+Decision layer: Jev (jev-1.14.0): 3 passed, 1 blocked, 0 flagged, 0 unavailable
+```
+
+The thresholds and modes come from a labelled evaluation against the real Jev (about $0.01 per
+run, needs `TYPESAFE_API_KEY`):
+
+```bash
+npm run eval:spend-check -w apps/agent [-- --holdout]
+```
+
+Without `--holdout` it runs the tuning cases only; `--holdout` also scores the hold-out cases and
+decides the pin. The cases are in `scripts/spend-check-cases.ts`.
 
 ## MCP server
 
@@ -79,7 +119,7 @@ Claude Desktop (`claude_desktop_config.json`; placeholders):
 ## The demo command
 
 ```bash
-npm run demo -- [--link] [--no-settle] [--budget 1.00] ["<task>"]
+npm run demo -- [--link] [--no-settle] [--no-spend-check] [--budget 1.00] ["<task>"]
 ```
 
 One process runs the whole story against the real PayPal sandbox and the real Anthropic API: the

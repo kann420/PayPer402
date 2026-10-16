@@ -2,6 +2,7 @@ import type { KeyObject } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { importPrivateKeyJwk, importPrivateKeyRaw, isValidCents, priceToCents, type Ed25519PrivateJwk } from '@payper402/scheme-paypal';
 import { DEFAULT_MODEL } from './agent';
+import type { DecisionLayerWant } from './spend-check';
 
 export const DEFAULT_TASK = "Brief me on today's coffee market: current price, top news, and a summary in Vietnamese.";
 export const DEFAULT_SELLER_URL = 'http://localhost:4021';
@@ -15,6 +16,8 @@ export interface AgentConfig {
   maxPerCallCents: number;
   model: string;
   task: string;
+  /** Whether the decision layer is wanted (decision-layer spec §2). The MCP server ignores it. */
+  decisionLayer: DecisionLayerWant;
 }
 
 export class ConfigError extends Error {
@@ -62,10 +65,21 @@ function httpUrl(name: string, value: string): string {
   throw new ConfigError(`${name} must be an http(s) URL`);
 }
 
-const env = (vars: Record<string, string | undefined>, name: string) => {
+/** A trimmed environment value, or `undefined` when it is unset or blank. */
+export const env = (vars: Record<string, string | undefined>, name: string) => {
   const value = vars[name]?.trim();
   return value === undefined || value === '' ? undefined : value;
 };
+
+/**
+ * Whether the decision layer is wanted (decision-layer spec §2). `--no-spend-check` wins over a
+ * missing key. The key is trimmed; the SDK does not trim a key passed in code.
+ */
+export function decisionLayerWant(vars: Record<string, string | undefined>, noSpendCheck: boolean): DecisionLayerWant {
+  if (noSpendCheck) return { want: false, reason: '--no-spend-check' };
+  const apiKey = env(vars, 'TYPESAFE_API_KEY');
+  return apiKey === undefined ? { want: false, reason: 'no TYPESAFE_API_KEY' } : { want: true, apiKey };
+}
 
 /**
  * Reads the CLI and MCP configuration (design spec §7): the environment, overridden by
@@ -97,13 +111,14 @@ export function loadAgentConfig(vars: Record<string, string | undefined>, argv: 
     maxPerCallCents,
     model: env(vars, 'ANTHROPIC_MODEL') ?? DEFAULT_MODEL,
     task: task === '' ? DEFAULT_TASK : task,
+    decisionLayer: decisionLayerWant(vars, parsed.values['no-spend-check'] === true),
   };
 }
 
-function parseCliArgs(argv: string[]) {
+export function parseCliArgs(argv: string[]) {
   return parseArgs({
     args: argv,
-    options: { budget: { type: 'string' }, 'max-per-call': { type: 'string' } },
+    options: { budget: { type: 'string' }, 'max-per-call': { type: 'string' }, 'no-spend-check': { type: 'boolean' } },
     allowPositionals: true,
     strict: true,
   });

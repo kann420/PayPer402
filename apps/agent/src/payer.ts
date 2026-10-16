@@ -3,6 +3,16 @@ import type { PaymentPayload, PaymentRequired, PaymentRequirements, SettleRespon
 import { ASSET, PAYPAL_SANDBOX_NETWORK, SCHEME, centsToUsdString, tryParseCentsString } from '@payper402/scheme-paypal';
 import type { Budget, Reservation } from './budget';
 import type { CatalogService, ParamIssue } from './catalog';
+import { canonicalKey, type CallRegistry, type JevRefusal } from './registry';
+import {
+  applySpendPolicy,
+  judgeSpendCheck,
+  type BlockedCheck,
+  type DecidedCheck,
+  type SpendCheck,
+  type SpendCheckInput,
+  type SpendPolicy,
+} from './spend-check';
 import {
   BLOCKING_REFUSALS,
   FAILURE_NOTES,
@@ -27,7 +37,25 @@ export type CallErrorKind = 'unknown_service' | 'invalid_params' | 'payments_blo
 /** The outcome of `session.call`, turned into a tool result by the tool core. */
 export type CallOutcome =
   | { ok: true; serviceId: string; paidCents: number; commitmentId: string | null; data: unknown }
-  | { ok: false; error: CallErrorKind; code?: string; message: string; issues?: ParamIssue[] };
+  | {
+      ok: false;
+      error: CallErrorKind;
+      code?: string;
+      message: string;
+      issues?: ParamIssue[];
+      /** Set only for Jev refusals and their repeats (decision-layer spec §6). */
+      check?: { servesTask: number; alreadyCovered: number };
+    };
+
+/** The decision layer's part of a paid call (decision-layer spec §3), present only when the layer is on. */
+export interface DecisionLayerContext {
+  registry: CallRegistry;
+  checker: SpendCheck;
+  policy: SpendPolicy;
+  deadlineMs: number;
+  /** The checker input for this call, built at judge time from the registry's earlier results. */
+  input(call: { service: CatalogService; params: Record<string, string | number> }): SpendCheckInput;
+}
 
 /** What one paid call needs from its session. */
 export interface PaidCallContext {
@@ -45,7 +73,24 @@ export interface PaidCallContext {
   emit(event: EventInput): void;
   /** Sets the session to blocked (design spec §4.5). */
   block(): void;
+  /** Absent when the decision layer is off: every Phase 3 behaviour is then unchanged. */
+  decisionLayer?: DecisionLayerContext;
 }
+
+/** The budget transitions of one call, mirrored in the registry when the layer is on (decision-layer spec §3.1). */
+interface Settlement {
+  commit(reservation: Reservation, actualCents: number): ReturnType<Budget['commit']>;
+  release(reservation: Reservation, jevRefusal?: JevRefusal): void;
+  markUncertain(reservation: Reservation): void;
+}
+
+const DUPLICATE_DETAIL: Record<'in_flight' | 'paid' | 'uncertain', string> = {
+  paid: '(paid)',
+  uncertain: '(outcome unknown)',
+  in_flight: '(in progress)',
+};
+
+const scores = (check: { servesTask: number; alreadyCovered: number }) => ({ servesTask: check.servesTask, alreadyCovered: check.alreadyCovered });
 
 function requestInit(ctx: PaidCallContext, headers: Record<string, string> = {}): { url: URL; init: RequestInit } {
   const url = new URL(ctx.url);
@@ -126,11 +171,36 @@ export async function runPaidCall(ctx: PaidCallContext): Promise<CallOutcome> {
     ctx.emit({ type: 'failed', ...ids, note, charged });
     return { ok: false, error: 'failed', message: note };
   };
-  const refused = (code: RefusalCode, by: 'agent' | 'facilitator', detail?: string): CallOutcome => {
+  const refused = (code: RefusalCode, by: 'agent' | 'facilitator', detail?: string, check?: BlockedCheck): CallOutcome => {
     const note = REFUSAL_NOTES[code];
-    ctx.emit({ type: 'refused', ...ids, code, by, note, ...(detail === undefined ? {} : { detail }) });
+    ctx.emit({
+      type: 'refused',
+      ...ids,
+      code,
+      by,
+      note,
+      ...(detail === undefined ? {} : { detail }),
+      ...(check === undefined ? {} : { check }),
+    });
     if (by === 'facilitator' && BLOCKING_REFUSALS.has(code)) ctx.block();
-    return { ok: false, error: 'refused', code, message: note };
+    return { ok: false, error: 'refused', code, message: note, ...(check === undefined ? {} : { check: scores(check) }) };
+  };
+  const layer = ctx.decisionLayer;
+  // With no registry these are exactly the Phase 3 budget calls.
+  const settlement: Settlement = {
+    commit: (reservation, actualCents) => {
+      const committed = budget.commit(reservation, actualCents);
+      layer?.registry.paid(callId);
+      return committed;
+    },
+    release: (reservation, jevRefusal) => {
+      budget.release(reservation);
+      layer?.registry.closed(callId, jevRefusal);
+    },
+    markUncertain: (reservation) => {
+      budget.markUncertain(reservation);
+      layer?.registry.uncertain(callId);
+    },
   };
 
   // Step 2: local pre-check from the catalog price. No request is made.
@@ -166,9 +236,42 @@ export async function runPaidCall(ctx: PaidCallContext): Promise<CallOutcome> {
   // Step 4: decide, synchronously, with no await between the checks and the reservation.
   if (priceCents > service.priceCents) return refused('price_changed', 'agent');
   if (priceCents > budget.maxPerCallCents) return refused('over_per_call_limit', 'agent');
+  const key = layer === undefined ? undefined : canonicalKey(service.id, ctx.params);
+  if (layer !== undefined && key !== undefined) {
+    // Registry checks (decision-layer spec §3.2 step 2): code, not Jev. Nothing is reserved.
+    const match = layer.registry.lookup(key);
+    if (match?.kind === 'repeat' && match.record.jevRefusal !== undefined) {
+      const first = match.record.jevRefusal;
+      return refused(first.code, 'agent', `Same as ${match.record.callId}`, { ...first.check, repeatOf: match.record.callId });
+    }
+    if (match?.kind === 'duplicate' && match.record.state !== 'closed') {
+      return refused('duplicate_call', 'agent', `Same as ${match.record.callId} ${DUPLICATE_DETAIL[match.record.state]}`);
+    }
+  }
   const reservation = budget.reserve(priceCents);
   if (!reservation) return refused('over_budget', 'agent');
-  ctx.emit({ type: 'decided', ...ids, priceCents, note: ctx.reason, remainingCents: budget.remainingCents });
+  if (layer === undefined || key === undefined) {
+    ctx.emit({ type: 'decided', ...ids, priceCents, note: ctx.reason, remainingCents: budget.remainingCents });
+  } else {
+    layer.registry.open(callId, service.id, key);
+    // Judge while the reservation is held, so parallel calls cannot race the budget (§3.2 step 4).
+    const judged = await judgeSpendCheck(layer.checker, layer.input({ service, params: ctx.params }), layer.deadlineMs);
+    let check: DecidedCheck;
+    if (!judged.ok) {
+      check = { status: 'unavailable', note: judged.note, latencyMs: judged.latencyMs };
+    } else {
+      const { model, servesTask, alreadyCovered } = judged.result;
+      const scored = { model, servesTask, alreadyCovered, latencyMs: judged.latencyMs };
+      const decision = applySpendPolicy(judged.result, layer.policy);
+      if (decision.outcome === 'block') {
+        const blocked: BlockedCheck = { status: 'blocked', ...scored };
+        settlement.release(reservation, { code: decision.rule, check: blocked });
+        return refused(decision.rule, 'agent', undefined, blocked);
+      }
+      check = decision.outcome === 'flag' ? { status: 'flagged', ...scored, wouldRefuse: decision.rule } : { status: 'passed', ...scored };
+    }
+    ctx.emit({ type: 'decided', ...ids, priceCents, note: ctx.reason, remainingCents: budget.remainingCents, check });
+  }
 
   // Step 5: sign, with the policy and the spend control set now that the price is known.
   ctx.client.registerPolicy((_version, requirements) =>
@@ -186,11 +289,11 @@ export async function runPaidCall(ctx: PaidCallContext): Promise<CallOutcome> {
   try {
     payload = await ctx.http.createPaymentPayload(paymentRequired);
   } catch {
-    budget.release(reservation);
+    settlement.release(reservation);
     return failed(FAILURE_NOTES.signingFailed, 'no');
   }
   if (payload.accepted.amount !== requirement.amount || payload.accepted.payTo !== ctx.payTo) {
-    budget.release(reservation);
+    settlement.release(reservation);
     return failed(FAILURE_NOTES.payloadMismatch, 'no');
   }
 
@@ -200,44 +303,44 @@ export async function runPaidCall(ctx: PaidCallContext): Promise<CallOutcome> {
   try {
     paid = await ctx.fetch(paidRequest.url, paidRequest.init);
   } catch {
-    budget.markUncertain(reservation);
+    settlement.markUncertain(reservation);
     return failed(FAILURE_NOTES.unknownOutcome, 'unknown');
   }
-  if (paid.status >= 200 && paid.status < 300) return paidOutcome(ctx, paid, reservation, ids);
+  if (paid.status >= 200 && paid.status < 300) return paidOutcome(ctx, paid, reservation, ids, settlement.commit);
   if (paid.status === 402) {
     const settle = tryDecode<SettleResponse>(() => ctx.http.getPaymentSettleResponse((name) => paid.headers.get(name)));
     const required = tryDecode<PaymentRequired>(() => ctx.http.getPaymentRequiredResponse((name) => paid.headers.get(name)));
     await discard(paid);
     if (settle && settle.success === false) {
       if (isBindingCode(settle.errorReason)) {
-        budget.release(reservation);
+        settlement.release(reservation);
         const refusal = refusalForBindingCode(settle.errorReason);
         return refused(refusal.code, 'facilitator', refusal.detail);
       }
       // A settle call that failed in transit: the facilitator may have recorded the commitment.
-      budget.markUncertain(reservation);
+      settlement.markUncertain(reservation);
       return failed(FAILURE_NOTES.unknownOutcome, 'unknown');
     }
     if (required) {
-      budget.release(reservation);
+      settlement.release(reservation);
       if (isBindingCode(required.error)) {
         const refusal = refusalForBindingCode(required.error);
         return refused(refusal.code, 'facilitator', refusal.detail);
       }
       return failed(FAILURE_NOTES.notCompleted, 'no');
     }
-    budget.markUncertain(reservation);
+    settlement.markUncertain(reservation);
     return failed(FAILURE_NOTES.unknownOutcome, 'unknown');
   }
   if (paid.status === 502) {
     // The middleware could not read the facilitator's answer, at verify or at settle.
     await discard(paid);
-    budget.markUncertain(reservation);
+    settlement.markUncertain(reservation);
     return failed(FAILURE_NOTES.unknownOutcome, 'unknown');
   }
   // The middleware settles only responses below 400, so nothing was charged.
   const code = await sellerErrorCode(paid);
-  budget.release(reservation);
+  settlement.release(reservation);
   return failed(statusNote(paid.status, code), 'no');
 }
 
@@ -246,6 +349,7 @@ async function paidOutcome(
   res: Response,
   reservation: Reservation,
   ids: { callId: string; serviceId: string; serviceName: string },
+  commit: Settlement['commit'],
 ): Promise<CallOutcome> {
   const settle = tryDecode<SettleResponse>(() => ctx.http.getPaymentSettleResponse((name) => res.headers.get(name)));
   let actualCents = reservation.amountCents;
@@ -255,7 +359,7 @@ async function paidOutcome(
     commitmentId = typeof settle.transaction === 'string' && settle.transaction !== '' ? settle.transaction : null;
   }
   // A 2xx means the handler ran and the middleware settled, so the money counts as spent.
-  const { committedCents, overReported } = ctx.budget.commit(reservation, actualCents);
+  const { committedCents, overReported } = commit(reservation, actualCents);
   ctx.emit({
     type: 'paid',
     ...ids,
@@ -268,5 +372,6 @@ async function paidOutcome(
   if (overReported) ctx.emit({ type: 'failed', ...ids, note: FAILURE_NOTES.overReported, charged: 'no' });
   // Step 7: the body is seller data, returned as data.
   const data = await readBody(res).catch(() => ({ error: 'response_unreadable' }));
+  ctx.decisionLayer?.registry.setData(ids.callId, data);
   return { ok: true, serviceId: ids.serviceId, paidCents: committedCents, commitmentId, data };
 }

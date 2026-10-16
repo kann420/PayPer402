@@ -1,4 +1,7 @@
 import { ErrorCode } from '@payper402/scheme-paypal';
+import type { BlockedCheck, DecidedCheck, DecisionLayerReport } from './spend-check';
+
+export type { BlockedCheck, DecidedCheck, DecisionLayerReport, RuleMode, SpendCheckSummary, SpendRule } from './spend-check';
 
 /** Why a payment was refused (design spec §4.5). */
 export type RefusalCode =
@@ -11,7 +14,10 @@ export type RefusalCode =
   | 'wallet_not_linked'
   | 'agent_disabled'
   | 'unknown_agent'
-  | 'payment_rejected';
+  | 'payment_rejected'
+  | 'duplicate_call'
+  | 'not_needed'
+  | 'already_covered';
 
 export type RunStatus = 'completed' | 'incomplete' | 'refused' | 'error';
 
@@ -35,6 +41,8 @@ export interface SpendReport {
   refusals: { serviceId: string; code: RefusalCode }[];
   commitmentIds: string[];
   explanation: string;
+  /** Present only when the decision layer was enabled (decision-layer spec §6). */
+  decisionLayer?: DecisionLayerReport;
 }
 
 /** The Phase 4 event contract (design spec §4.6). `at` is unix milliseconds. Plain JSON. */
@@ -59,6 +67,8 @@ export type AgentEvent =
       priceCents: number;
       note: string;
       remainingCents: number;
+      /** Status passed, flagged or unavailable; absent when the decision layer is off. */
+      check?: DecidedCheck;
     }
   | {
       type: 'paid';
@@ -82,6 +92,8 @@ export type AgentEvent =
       by: 'agent' | 'facilitator';
       note: string;
       detail?: string;
+      /** Status blocked, for the two Jev codes and their repeats. */
+      check?: BlockedCheck;
     }
   | {
       type: 'failed';
@@ -106,6 +118,9 @@ export const REFUSAL_NOTES: Record<RefusalCode, string> = {
   agent_disabled: 'This agent is paused',
   unknown_agent: "This agent's key is not registered",
   payment_rejected: 'The payment was rejected',
+  duplicate_call: 'This exact call was already made in this run',
+  not_needed: 'The decision layer judged this call not needed for the task',
+  already_covered: 'The decision layer judged this information already obtained',
 };
 
 /** Refusals after which every later call is answered locally with `payments_blocked`. */

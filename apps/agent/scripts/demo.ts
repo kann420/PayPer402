@@ -2,11 +2,12 @@
  * PayPer402 demo command (design spec §9): the whole story in one process. The facilitator, the demo
  * seller and the Claude agent run here against the real PayPal sandbox and the real Anthropic API.
  *
- *   npm run demo -- [--link] [--no-settle] [--budget 1.00] ["<task>"]
+ *   npm run demo -- [--link] [--no-settle] [--no-spend-check] [--budget 1.00] ["<task>"]
  *
  * Needs PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, DATA_ENCRYPTION_KEY, API_KEY_PEPPER and Anthropic
  * credentials (root .env). Optional: DEMO_DATABASE_PATH (default <repo>/data/demo.db), PORT (4020),
- * SELLER_PORT (4021), PUBLIC_BASE_URL, ANTHROPIC_MODEL, AGENT_PRIVATE_KEY, LOG_LEVEL (default warn).
+ * SELLER_PORT (4021), PUBLIC_BASE_URL, ANTHROPIC_MODEL, AGENT_PRIVATE_KEY, LOG_LEVEL (default warn), TYPESAFE_API_KEY (enables the
+ * decision layer; the task text is sent to TypeSafe).
  * Never prints API keys, the agent private key, vault ids or payment headers.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -24,10 +25,12 @@ import { seed } from '@payper402/facilitator/seed';
 import { startFacilitator, type RunningFacilitator } from '@payper402/facilitator/server';
 import { exportPrivateKeyRaw, generateAgentKey, importPrivateKeyRaw, kidFromPublicKeyX, priceToCents, publicKeyX } from '@payper402/scheme-paypal';
 import { DEFAULT_MODEL, runAgent } from '../src/agent';
-import { DEFAULT_TASK, ConfigError as AgentConfigError, parseAgentKey } from '../src/config';
+import { DEFAULT_TASK, ConfigError as AgentConfigError, decisionLayerWant, parseAgentKey } from '../src/config';
 import { DemoFail, checkLedger, ensureAgent, settleRun, settlementDecision, type Api } from '../src/demo-steps';
 import { formatEvent, formatReport } from '../src/format';
+import { createJevSpendCheck } from '../src/jev';
 import { openSession } from '../src/session';
+import { setupDecisionLayer, type DecisionLayerWant } from '../src/spend-check';
 import { formatUsd } from '../src/tools';
 
 const LINK_TIMEOUT_MS = 10 * 60 * 1000;
@@ -46,6 +49,7 @@ interface Args {
   settle: boolean;
   budgetCents: number;
   task: string;
+  decisionLayer: DecisionLayerWant;
 }
 
 function parseCommandLine(): Args {
@@ -53,7 +57,7 @@ function parseCommandLine(): Args {
   try {
     parsed = parseArgs({
       args: process.argv.slice(2),
-      options: { link: { type: 'boolean' }, 'no-settle': { type: 'boolean' }, budget: { type: 'string' } },
+      options: { link: { type: 'boolean' }, 'no-settle': { type: 'boolean' }, 'no-spend-check': { type: 'boolean' }, budget: { type: 'string' } },
       allowPositionals: true,
       strict: true,
     });
@@ -68,7 +72,13 @@ function parseCommandLine(): Args {
   }
   if (budgetCents < 1) throw new DemoFail('--budget must be at least 0.01.');
   const task = parsed.positionals.join(' ').trim();
-  return { link: parsed.values.link === true, settle: parsed.values['no-settle'] !== true, budgetCents, task: task === '' ? DEFAULT_TASK : task };
+  return {
+    link: parsed.values.link === true,
+    settle: parsed.values['no-settle'] !== true,
+    budgetCents,
+    task: task === '' ? DEFAULT_TASK : task,
+    decisionLayer: decisionLayerWant(process.env, parsed.values['no-spend-check'] === true),
+  };
 }
 
 function buildConfig(): Config {
@@ -245,6 +255,8 @@ async function run(args: Args, state: State): Promise<void> {
   // Step 6: the agent, with the operator's per-call cap as its ceiling.
   const maxPerCallCents = Math.min(operator.perCall, args.budgetCents);
   out(`6. Agent run: budget ${formatUsd(args.budgetCents)}, per-call limit ${formatUsd(maxPerCallCents)}.`);
+  const layer = setupDecisionLayer(args.decisionLayer, createJevSpendCheck);
+  out(`   ${layer.line}`);
   out();
   const runStart = Math.floor(Date.now() / 1000);
   const session = await openSession({
@@ -255,6 +267,7 @@ async function run(args: Args, state: State): Promise<void> {
     onEvent: (event) => {
       if (event.type !== 'result') out(`   ${formatEvent(event)}`);
     },
+    ...(layer.spendCheck === undefined ? {} : { spendCheck: { checker: layer.spendCheck, task: args.task } }),
   });
   const result = await runAgent({ task: args.task, session, anthropic: new Anthropic(), model, signal: interrupt.signal });
   out();

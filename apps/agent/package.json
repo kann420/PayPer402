@@ -12,6 +12,7 @@
     "agent": "tsx --env-file-if-exists=../../.env src/cli.ts",
     "mcp": "tsx --env-file-if-exists=../../.env src/mcp.ts",
     "demo": "tsx --env-file-if-exists=../../.env scripts/demo.ts",
+    "eval:spend-check": "tsx --env-file-if-exists=../../.env scripts/eval-spend-check.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "@payper402/demo-seller": "*",
     "@payper402/facilitator": "*",
     "@payper402/scheme-paypal": "*",
+    "@typesafe-ai/sdk": "0.7.0",
     "@x402/core": "2.28.0",
     "zod": "^4.6.7"
   },

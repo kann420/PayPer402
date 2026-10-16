@@ -161,6 +161,8 @@ export function createToolCore(session: AgentSession): CoreTool[] {
         ...(outcome.code === undefined ? {} : { code: outcome.code }),
         message: outcome.message,
         ...(outcome.issues === undefined ? {} : { issues: outcome.issues }),
+        // A Jev refusal carries the two probabilities, so the model can adapt (decision-layer spec §6).
+        ...(outcome.check === undefined ? {} : { check: { servesTask: outcome.check.servesTask, alreadyCovered: outcome.check.alreadyCovered } }),
         budget: budgetBrief(),
       });
     },
