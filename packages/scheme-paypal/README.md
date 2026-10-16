@@ -106,7 +106,8 @@ Prices may be `"$0.05"`, `"0.05"`, `0.05` or `{ asset: "USD", amount: "5" }` (ce
 scheme adds `extra.version` and caps `maxTimeoutSeconds` at 300.
 
 Settlement overrides may also be given as `"$0.04"` (converted to cents with the scheme's
-`getAssetDecimals`, rounded) or `"40%"` (of the advertised maximum, floored). The SDK does not
+`getAssetDecimals`; extra decimals are dropped, so `"$0.049"` settles 4 cents: truncated, not
+rounded) or `"40%"` (of the advertised maximum, floored). The SDK does not
 bound overrides itself; the facilitator rejects any settle amount below 1 cent or above the
 signed `maxAmount` with `amount_exceeds_commitment`.
 

@@ -129,6 +129,20 @@ describe('InMemoryAgentRegistry', () => {
     expect(() => registry.setCaps('op', caps)).toThrow(TypeError);
   });
 
+  it('rejects missing caps with a clear message', () => {
+    const caps = undefined as unknown as Caps;
+    expect(() => new InMemoryAgentRegistry().addOperator({ operatorId: 'op', walletStatus: 'active', caps })).toThrow(
+      /Caps must be an object/,
+    );
+  });
+
+  it('rejects an operator id that is already registered', () => {
+    const registry = new InMemoryAgentRegistry().addOperator({ operatorId: 'op', walletStatus: 'active', caps: CAPS });
+    expect(() => registry.addOperator({ operatorId: 'op', walletStatus: 'revoked', caps: CAPS })).toThrow(
+      /already registered/,
+    );
+  });
+
   it('rejects an agent whose kid does not match its public key', () => {
     const registry = new InMemoryAgentRegistry();
     expect(() => registry.addAgent({ ...agentFor(), kid: generateAgentKey().kid })).toThrow();

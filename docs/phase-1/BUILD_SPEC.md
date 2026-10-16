@@ -299,7 +299,8 @@ parallel `record` calls.
   and rejects non-`paypal:*` networks.
 - `getAssetDecimals` returns `2` for `USD` and `undefined` otherwise.
 - `enhancePaymentRequirements` sets `extra.version = BINDING_VERSION`, keeps other `extra` fields,
-  and clamps `maxTimeoutSeconds` to at most `MAX_TIMEOUT_SECONDS` (300 when missing or 0).
+  and clamps `maxTimeoutSeconds` to at most `MAX_TIMEOUT_SECONDS` (300 when missing, 0, negative
+  or not an integer).
 
 ### Facilitator scheme (`facilitator.ts`)
 

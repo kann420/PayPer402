@@ -97,6 +97,9 @@ export function exceededCap(amount: number, snapshot: SpendSnapshot, caps: Caps)
 
 /** Throws unless every cap is a safe non-negative integer (cents); `total` may be omitted. */
 export function assertValidCaps(caps: Caps): void {
+  if (caps === null || typeof caps !== 'object') {
+    throw new TypeError('Caps must be an object with perCall, daily and unsettled cents');
+  }
   const names: CapName[] = ['perCall', 'daily', 'unsettled'];
   if (caps.total !== undefined) names.push('total');
   for (const name of names) {

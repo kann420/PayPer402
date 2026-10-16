@@ -18,8 +18,14 @@ export class InMemoryAgentRegistry implements AgentRegistry {
   private readonly agentsByKid = new Map<string, AgentRecord>();
   private readonly operators = new Map<string, OperatorRecord>();
 
-  /** Adds an operator. Throws if any cap is not a safe non-negative integer. */
+  /**
+   * Adds an operator. Throws if the operator id is already registered or any cap is not a safe
+   * non-negative integer.
+   */
   addOperator(operator: OperatorRecord): this {
+    if (this.operators.has(operator.operatorId)) {
+      throw new Error(`Operator already registered: ${operator.operatorId}`);
+    }
     assertValidCaps(operator.caps);
     this.operators.set(operator.operatorId, structuredClone(operator));
     return this;

@@ -224,7 +224,8 @@ settlement overrides to the actual price. The facilitator MUST:
      run time. The ledger, not expiry, is what bounds money.
 2. **Atomically, per operator**, decide replay and idempotency, re-check caps, and record:
    - **Same `id`, same `payloadHash`:** it is a retry that raced the first settle past step 0.
-     Return the original result unchanged, whatever the retry's settle `amount` is.
+     Return the original result (see the note on `extra` below), whatever the retry's settle
+     `amount` is.
      `payloadHash` is SHA-256 over `canonical(commitment)` plus the signature; it does not
      include the settle amount.
    - **Same `id`, different `payloadHash`:** fail with `replay`.
