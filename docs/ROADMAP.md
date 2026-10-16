@@ -107,17 +107,17 @@ Business account shows the settlement capture.
 Goal: the story the judges will watch. An AI agent finds paid APIs, decides what is worth paying
 for, pays, and explains its spending.
 
-- [ ] `apps/demo-seller`: two or three paid APIs that are genuinely useful to an agent, priced in
+- [x] `apps/demo-seller`: four paid APIs that are genuinely useful to an agent, priced in
   cents.
   - Candidates: a market-data lookup, a web page summary, a translation or extraction endpoint.
   - Pick the ones that make the clearest story.
   - Each one is a small Express route behind `@x402/express` with the PayPal scheme.
-- [ ] `apps/agent`: a Claude agent (load the `claude-api` skill first) using tool use.
-  - Tools: list services and their prices, call a paid API through `@x402/fetch`, check the
-    remaining budget.
+- [x] `apps/agent`: a Claude agent (load the `claude-api` skill first) using tool use.
+  - Tools: list services and their prices, call a paid API with the x402 client (`@x402/core`),
+    seeing the price before paying, check the remaining budget.
   - It plans within a budget, pays, finishes the task, and returns a spend report.
   - CLI first.
-- [ ] MCP server so any MCP client can pay through PayPer402. Check `@x402/mcp` before writing our
+- [x] MCP server so any MCP client can pay through PayPer402. Check `@x402/mcp` before writing our
   own. Keep pay tools injection-safe: they accept server-issued ids only, never free-form amounts
   or recipients.
 
