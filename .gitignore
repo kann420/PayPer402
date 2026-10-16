@@ -23,9 +23,6 @@ keys/
 # Private agent notes
 CLAUDE.local.md
 
-# Spike not yet translated and renamed
-paypal402-spike/
-
 # OS and editor
 .DS_Store
 Thumbs.db

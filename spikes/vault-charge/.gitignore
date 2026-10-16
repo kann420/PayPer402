@@ -1,0 +1,3 @@
+.env
+.vault-state.json
+node_modules/

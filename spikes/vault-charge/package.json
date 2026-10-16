@@ -1,0 +1,15 @@
+{
+  "name": "@payper402/spike-vault-charge",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Spike: save a PayPal wallet once (Vault v3), then charge it with no payer present. Sandbox only.",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "spike": "node vault-spike.mjs",
+    "charge": "node vault-spike.mjs charge",
+    "status": "node vault-spike.mjs status",
+    "delete": "node vault-spike.mjs delete"
+  }
+}
