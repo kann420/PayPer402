@@ -1,0 +1,298 @@
+/* Design tokens from the "Design system" artboard of the PayPer402 UI canvas. */
+:root {
+  --ink-950: #0c0f0e;
+  --ink-800: #3a423e;
+  --ink-700: #4f5753;
+  --ink-500: #5b635f;
+  --ground-50: #f4f5f1;
+  --ground-100: #eef0eb;
+  --line-200: #e2e4de;
+  --line-300: #cdd1c9;
+  --meter-100: #ddf9e9;
+  --meter-400: #2be38a;
+  --meter-600: #0e9f5c;
+  --meter-700: #087a3d;
+  --meter-800: #05592c;
+  --violet-100: #ece8ff;
+  --violet-500: #7c5cff;
+  --violet-800: #3a2799;
+  --amber-100: #fff1d6;
+  --amber-800: #6b4200;
+  --red-100: #fde7e4;
+  --red-700: #b42318;
+  --red-800: #8a1c12;
+  --side-text: #b4beb8;
+  --side-active: #1f2724;
+  --side-hover: #1a201e;
+  --side-border: #26302c;
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--ground-50);
+  color: var(--ink-950);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+a {
+  color: var(--meter-700);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--meter-800);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.sandbox {
+  background: #fff4db;
+  color: var(--amber-800);
+  font-size: 13px;
+  text-align: center;
+  padding: 6px 16px;
+  border-bottom: 1px solid #f0ddae;
+}
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-body {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.side {
+  flex: 0 0 232px;
+  background: var(--ink-950);
+  color: #eef2ef;
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  box-sizing: border-box;
+}
+.side-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+}
+.side-brand img {
+  display: block;
+}
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.side-nav a {
+  color: var(--side-text);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+.side-nav a:hover {
+  background: var(--side-hover);
+  color: #fff;
+}
+.side-nav a[aria-current='page'] {
+  background: var(--side-active);
+  color: #fff;
+  font-weight: 600;
+}
+.side-account {
+  margin-top: auto;
+  border: 1px solid var(--side-border);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.main {
+  flex: 1 1 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--line-200);
+  background: #fff;
+}
+.topbar h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+.topbar select {
+  height: 40px;
+  border: 1px solid var(--line-300);
+  border-radius: 10px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 14px;
+  background: #fff;
+}
+.btn-dark {
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 14px;
+  background: var(--ink-950);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.content {
+  padding: 24px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 14px;
+}
+.kpi {
+  background: #fff;
+  border: 1px solid var(--line-200);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kpi-label {
+  font-size: 13px;
+  color: var(--ink-500);
+}
+.kpi-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.kpi-sub {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-500);
+}
+.meter {
+  height: 6px;
+  background: var(--ground-100);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.meter > div {
+  height: 100%;
+}
+
+.link-card {
+  background: #fff;
+  border: 1px solid var(--line-200);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: center;
+}
+
+.badge {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.badge-ok {
+  background: var(--meter-100);
+  color: var(--meter-800);
+}
+.badge-pending {
+  background: var(--violet-100);
+  color: var(--violet-800);
+}
+.badge-bad {
+  background: var(--red-100);
+  color: var(--red-800);
+}
+.badge-warn {
+  background: var(--amber-100);
+  color: var(--amber-800);
+}
+.badge-neutral {
+  background: var(--ground-100);
+  color: var(--ink-800);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-500);
+  border: 1px solid var(--line-200);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.studio-host {
+  /* AG Studio fills its parent, so the parent needs a size. */
+  width: 100%;
+  min-width: 0;
+}
+
+/* Grid widget headers: small caps-style labels, as in the design system table. */
+.studio-host .ag-header-cell-text {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
