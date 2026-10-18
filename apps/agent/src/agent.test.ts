@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import { AGENT_BETAS, SYSTEM_PROMPT, runAgent } from './agent';
+import { AGENT_BETAS, FINISH_SCHEMA, SYSTEM_PROMPT, runAgent } from './agent';
 import type { AgentEvent } from './events';
 import { openSession } from './session';
 import { fakeAnthropic, fetchSpy, message, startDemoEnv, text, thinking, toolUse, type Env, type ScriptedReply } from './test-support';
@@ -85,6 +85,22 @@ describe('runAgent', () => {
     const section = spec.slice(spec.indexOf('### 6.2'));
     const block = /```\n([\s\S]*?)\n```/.exec(section)?.[1];
     expect(SYSTEM_PROMPT).toBe(block);
+  });
+
+  it('asks for a plan note before the first paid call and an English spend explanation (web-app spec §6)', () => {
+    expect(SYSTEM_PROMPT).toContain(
+      '- Before your first call_service, write one short sentence that says what you plan to buy and\n  why.',
+    );
+    expect(SYSTEM_PROMPT).toContain('Write that paragraph in English, whatever language\n  the answer is in.');
+    expect(SYSTEM_PROMPT.indexOf('Call list_services first')).toBeLessThan(SYSTEM_PROMPT.indexOf('Before your first call_service'));
+    expect(SYSTEM_PROMPT.trimEnd().endsWith('Do not state amounts the tools did not report.')).toBe(true);
+  });
+
+  it("asks for the spend explanation in English in the finish tool too (agent.md §5)", () => {
+    expect(FINISH_SCHEMA.properties['spend_explanation']).toEqual({
+      type: 'string',
+      description: 'Two to four sentences, in English: what you paid for, what you skipped and why',
+    });
   });
 
   it('keeps the history append-only', async () => {

@@ -652,8 +652,8 @@ it. Tool inputs **never** contain a URL, an amount or a recipient:
 - **Description:** "Finish the task. Call this once, alone, when you are done."
 - **Input:**
   - `answer`: 1 to 8000 chars, "The answer for the user"
-  - `spend_explanation`: 1 to 1500 chars, "Two to four sentences: what you paid for, what you
-    skipped and why"
+  - `spend_explanation`: 1 to 1500 chars, "Two to four sentences, in English: what you paid
+    for, what you skipped and why"
 
 Tool results carry seller data. The system prompt tells the model to treat it as data. The real
 guard is the code in §4: the model cannot raise a price, change a recipient or exceed the budget
@@ -708,6 +708,8 @@ the API answers HTTP 402 with a price, you pay with a signed commitment, and the
 later to your operator's PayPal account.
 
 - Call list_services first to see what is available and what each call costs.
+- Before your first call_service, write one short sentence that says what you plan to buy and
+  why.
 - Spend only on calls you need for the task. Prefer the cheapest service that answers the
   question, and do not repeat a call you have already made.
 - Stay within your budget and your per-call limit. The tools enforce both. Do not call a service
@@ -720,7 +722,8 @@ later to your operator's PayPal account.
 - Data marked "simulated": true comes from a demo feed. Say so in your answer.
 - Write the answer in the language the task asks for.
 - When you are done, call finish once, alone, with the answer and a short paragraph that explains
-  what you paid for, what you skipped and why. Do not state amounts the tools did not report.
+  what you paid for, what you skipped and why. Write that paragraph in English, whatever language
+  the answer is in. Do not state amounts the tools did not report.
 ```
 
 ### 6.3 Loop rules
@@ -951,6 +954,13 @@ The demo never prints API keys, the agent private key, vault ids or payment head
 
 ## Change notes
 
+- **Phase 4, after the build (2026-10-17):** in Phase 4's real run the spend explanation still
+  came back in the task's language, so §5's `finish` description of `spend_explanation` now
+  says "in English" too. `FINISH_SCHEMA` matches.
+- **Phase 4 amendment (2026-10-17), web-app spec §6:** §6.2's system prompt gains a bullet asking
+  for one short sentence on what the agent plans to buy and why before its first `call_service`,
+  and its last bullet now asks for the spend paragraph in English whatever the answer's language.
+  `SYSTEM_PROMPT` matches. Nothing else changes.
 - **Build notes (Phase 3.5, 2026-10-16):** the decision-layer amendments of decision-layer.md §9
   are applied to §4, §4.3 step 4, §4.5, §4.6, §4.7, §7, §8 and §9. Text is extended, never
   contradicted.

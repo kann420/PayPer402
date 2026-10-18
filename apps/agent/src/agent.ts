@@ -14,6 +14,8 @@ export const SYSTEM_PROMPT = [
   "later to your operator's PayPal account.",
   '',
   '- Call list_services first to see what is available and what each call costs.',
+  '- Before your first call_service, write one short sentence that says what you plan to buy and',
+  '  why.',
   '- Spend only on calls you need for the task. Prefer the cheapest service that answers the',
   '  question, and do not repeat a call you have already made.',
   '- Stay within your budget and your per-call limit. The tools enforce both. Do not call a service',
@@ -26,7 +28,8 @@ export const SYSTEM_PROMPT = [
   '- Data marked "simulated": true comes from a demo feed. Say so in your answer.',
   '- Write the answer in the language the task asks for.',
   '- When you are done, call finish once, alone, with the answer and a short paragraph that explains',
-  '  what you paid for, what you skipped and why. Do not state amounts the tools did not report.',
+  '  what you paid for, what you skipped and why. Write that paragraph in English, whatever language',
+  '  the answer is in. Do not state amounts the tools did not report.',
 ].join('\n');
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
@@ -43,7 +46,7 @@ export const FINISH_SCHEMA: JsonObjectSchema = {
   type: 'object',
   properties: {
     answer: { type: 'string', description: 'The answer for the user' },
-    spend_explanation: { type: 'string', description: 'Two to four sentences: what you paid for, what you skipped and why' },
+    spend_explanation: { type: 'string', description: 'Two to four sentences, in English: what you paid for, what you skipped and why' },
   },
   required: ['answer', 'spend_explanation'],
   additionalProperties: false,

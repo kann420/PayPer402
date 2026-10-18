@@ -66,13 +66,13 @@ export interface FakeAnthropic {
 }
 
 /**
- * An `Anthropic` client whose transport answers from `script`, in order. It has an explicit test
- * key and no retries, so it never resolves real credentials or reaches the network.
+ * A `fetch` for the Anthropic SDK that answers from `script`, in order, and records each request.
+ * An exhausted script answers HTTP 500. It never reaches the network.
  */
-export function fakeAnthropic(script: ScriptedReply[]): FakeAnthropic {
+export function scriptedAnthropicFetch(script: ScriptedReply[]): { fetch: typeof fetch; requests: RecordedRequest[] } {
   const requests: RecordedRequest[] = [];
   const queue = [...script];
-  const fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+  const fetchFn = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const headers: Record<string, string> = {};
     new Headers(init?.headers).forEach((value, key) => {
       headers[key] = value;
@@ -94,6 +94,15 @@ export function fakeAnthropic(script: ScriptedReply[]): FakeAnthropic {
       headers: { 'content-type': 'application/json' },
     });
   };
+  return { fetch: fetchFn as typeof fetch, requests };
+}
+
+/**
+ * An `Anthropic` client whose transport answers from `script`, in order. It has an explicit test
+ * key and no retries, so it never resolves real credentials or reaches the network.
+ */
+export function fakeAnthropic(script: ScriptedReply[]): FakeAnthropic {
+  const { fetch, requests } = scriptedAnthropicFetch(script);
   const client = new Anthropic({ apiKey: 'sk-ant-test-not-a-key', fetch, maxRetries: 0 });
   return { client, requests };
 }
