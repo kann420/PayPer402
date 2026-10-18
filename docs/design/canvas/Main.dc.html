@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PayPer402 · Landing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#087A3D;text-decoration:none}a:hover{color:#05592C}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.tnum{font-variant-numeric:tabular-nums}
+.wrap{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 26px;border-radius:999px;font-weight:700;font-size:16px;box-sizing:border-box;transition:transform .25s cubic-bezier(.2,.8,.2,1),background .2s,box-shadow .25s}
+.btn:hover{transform:translateY(-2px)}
+.btn-ink{background:#0C0F0E;color:#FFFFFF}.btn-ink:hover{color:#FFFFFF;box-shadow:0 10px 24px rgba(12,15,14,.22)}
+.btn-line{border:1.5px solid #CDD1C9;color:#0C0F0E;background:#FFFFFF}.btn-line:hover{border-color:#0C0F0E;color:#0C0F0E}
+.btn .arr{transition:transform .25s cubic-bezier(.2,.8,.2,1)}.btn:hover .arr{transform:translateX(3px)}
+.h2{margin:0;font-size:clamp(34px,4.6vw,56px);font-weight:800;letter-spacing:-.04em;line-height:1.03}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#087A3D;letter-spacing:.04em}
+.navlink{color:#3A423E;font-weight:600;font-size:15px;transition:color .2s}.navlink:hover{color:#0C0F0E}
+.card{background:#FFFFFF;border:1px solid #E2E4DE;border-radius:24px;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}
+.card:hover{transform:translateY(-4px);box-shadow:0 24px 48px -20px rgba(12,15,14,.18)}
+.stepbtn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:18px 20px;border-radius:18px;transition:background .3s}
+.stepbtn:hover{background:#F4F5F1}
+.stepbtn:focus-visible,.tab:focus-visible{outline:3px solid #0C0F0E;outline-offset:2px}
+.tab{all:unset;box-sizing:border-box;cursor:pointer;min-height:46px;padding:0 22px;border-radius:999px;font-weight:700;font-size:15px;display:inline-flex;align-items:center;transition:background .3s,color .3s}
+details summary{cursor:pointer;list-style:none}
+details summary::-webkit-details-marker{display:none}
+.chev{transition:transform .3s cubic-bezier(.2,.8,.2,1)}details[open] .chev{transform:rotate(45deg)}
+
+@keyframes word{from{opacity:0;transform:translateY(.35em);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+.w{display:inline-block;animation:word .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.rise{animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+@keyframes winIn{from{opacity:0;transform:translateY(40px) scale(.97)}to{opacity:1;transform:none}}
+.win{animation:winIn 1.1s .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+.pop{animation:pop .45s cubic-bezier(.3,1.4,.5,1) both}
+@keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.slidein{animation:slideIn .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rowIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+.rowin{animation:rowIn .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes chargeIn{0%{opacity:0;transform:translateY(24px) scale(.94)}60%{opacity:1;transform:translateY(-4px) scale(1.01)}100%{transform:none}}
+.chargein{animation:chargeIn .8s cubic-bezier(.2,.8,.2,1) both}
+@keyframes dots{0%,20%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
+.dot{animation:dots 1.2s infinite}.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(14,159,92,.45)}100%{box-shadow:0 0 0 10px rgba(14,159,92,0)}}
+.live{animation:pulse 1.6s infinite}
+@keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin .9s linear infinite}
+.st > *{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}
+.st > *:nth-child(2){animation-delay:.35s}.st > *:nth-child(3){animation-delay:.7s}.st > *:nth-child(4){animation-delay:1.05s}.st > *:nth-child(5){animation-delay:1.4s}.st > *:nth-child(6){animation-delay:1.75s}.st > *:nth-child(7){animation-delay:2.1s}.st > *:nth-child(8){animation-delay:2.45s}
+@keyframes type{from{max-width:0}to{max-width:100%}}
+.type{display:inline-block;overflow:hidden;white-space:nowrap;vertical-align:bottom;animation:type 1.2s 1.1s steps(34) both}
+@keyframes prog{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.prog{transform-origin:left;animation:prog 4.9s linear both}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.grow{transform-origin:left;animation:grow 1.2s .3s cubic-bezier(.2,.8,.2,1) both}
+@keyframes shake{0%,86%,100%{transform:none}88%{transform:translateX(-5px)}90%{transform:translateX(5px)}92%{transform:translateX(-4px)}94%{transform:translateX(3px)}}
+.shake{animation:shake 4s infinite}
+@keyframes marquee{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+.marquee{animation:marquee 12s linear infinite}
+@keyframes toast{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+.toast{animation:toast .5s cubic-bezier(.2,.8,.2,1) both}
+.seg{transition:background .35s cubic-bezier(.2,.8,.2,1)}
+html{scroll-behavior:smooth}
+
+/* hero pipeline explainer */
+.pnode{flex:none;width:clamp(84px,15vw,170px);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.pbox{position:relative;width:clamp(60px,8vw,88px);height:clamp(60px,8vw,88px);border-radius:26px;display:flex;align-items:center;justify-content:center;transition:box-shadow .5s cubic-bezier(.2,.8,.2,1),background .5s,transform .5s cubic-bezier(.2,.8,.2,1)}
+.ptrack{flex:1 1 auto;min-width:0;position:relative;height:clamp(60px,8vw,88px)}
+.pline{position:absolute;left:6px;right:6px;top:50%;height:2px;margin-top:-1px;border-radius:2px;background:repeating-linear-gradient(90deg,#CDD1C9 0 6px,transparent 6px 12px)}
+.pline-on{position:absolute;left:6px;right:6px;top:50%;height:2px;margin-top:-1px;border-radius:2px;transition:opacity .5s}
+.chip{position:absolute;top:50%;z-index:2;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 10px 20px -10px rgba(12,15,14,.45)}
+.fwd{animation:fwd 1.2s .15s cubic-bezier(.65,0,.25,1) both}
+.back{animation:back 1.2s .15s cubic-bezier(.65,0,.25,1) both}
+.strm{animation:strm 1s linear infinite both}
+@keyframes fwd{0%{left:0;transform:translate(0,-50%) scale(.7);opacity:0}12%{opacity:1;transform:translate(0,-50%)}100%{left:100%;transform:translate(-100%,-50%);opacity:1}}
+@keyframes back{0%{left:100%;transform:translate(-100%,-50%) scale(.7);opacity:0}12%{opacity:1;transform:translate(-100%,-50%)}100%{left:0;transform:translate(0,-50%);opacity:1}}
+@keyframes strm{0%{left:0;transform:translate(0,-50%);opacity:0}15%,80%{opacity:1}100%{left:100%;transform:translate(-100%,-50%);opacity:0}}
+.bdg{position:absolute;top:-13px;right:-20px;z-index:3;display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;white-space:nowrap;box-shadow:0 8px 16px -8px rgba(12,15,14,.4);animation:pop .45s cubic-bezier(.3,1.5,.5,1) both}
+.cap{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}
+.bdg.jev{right:auto;left:50%;top:-16px;transform:translateX(-50%);animation:jevpop .45s cubic-bezier(.3,1.5,.5,1) both}
+@keyframes jevpop{from{opacity:0;transform:translateX(-50%) scale(.6)}to{opacity:1;transform:translateX(-50%)}}
+@media (max-width: 640px){.chip .t{display:none}.chip{width:16px;height:16px;padding:0;justify-content:center}.bdg{right:-10px;font-size:11px}}
+
+/* sticky header: open bar at the top, light liquid-glass pill once scrolled */
+.hdr-wrap{position:sticky;top:0;z-index:50;display:flex;justify-content:center;pointer-events:none;animation:rise .8s cubic-bezier(.2,.8,.2,1) backwards}
+.hdr{color:#0C0F0E;pointer-events:auto;position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:28px;box-sizing:border-box;width:100%;max-width:100%;margin-top:0;padding:16px max(24px, calc((100vw - 1152px) / 2));border-radius:0;background:transparent}
+.hdr .navlink{color:#0C0F0E;opacity:.75;transition:opacity .2s}.hdr .navlink:hover{color:#0C0F0E;opacity:1}
+.hdr .logo{color:#0C0F0E}.hdr .logo .ac{color:#087A3D}.hdr .logo .stem{fill:#0C0F0E}
+/* the three glass layers: refraction, tint, shine */
+.lg{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1}
+.lg-fx{-webkit-backdrop-filter:blur(7px) saturate(1.9) brightness(1.06);backdrop-filter:blur(7px) saturate(1.9) brightness(1.06);filter:url(#lg-distort)}
+.lg-tint{background:linear-gradient(135deg,rgba(255,255,255,.62) 0%,rgba(255,255,255,.34) 45%,rgba(221,249,233,.42) 100%)}
+.lg-shine{box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.55),inset 0 -6px 14px -6px rgba(43,227,138,.22),inset 0 8px 16px -10px rgba(255,255,255,.9)}
+.lg-shine::before{content:"";position:absolute;left:6%;right:40%;top:2px;height:40%;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,0));filter:blur(1px)}
+.hdr nav{display:flex;gap:6px 26px;flex:1 1 auto;justify-content:center;flex-wrap:wrap}
+@keyframes hdrShrink{
+  from{max-width:100%;margin-top:0;padding:16px max(24px, calc((100vw - 1152px) / 2));border-radius:0;box-shadow:0 0 0 0 rgba(12,15,14,0),0 0 0 0 rgba(12,15,14,0)}
+  to{max-width:min(820px, calc(100% - 24px));margin-top:12px;padding:7px 7px 7px 20px;border-radius:999px;box-shadow:0 0 0 1px rgba(12,15,14,.07),0 20px 44px -18px rgba(12,15,14,.32)}
+}
+@keyframes glassOn{from{opacity:0}to{opacity:1}}
+@keyframes logoShrink{from{transform:none}to{transform:scale(.9)}}
+@supports (animation-timeline: scroll()){
+  .hdr{animation:hdrShrink linear both;animation-timeline:scroll(root);animation-range:0 160px}
+  .hdr .lg{animation:glassOn linear both;animation-timeline:scroll(root);animation-range:20px 140px}
+  .hdr .logo{transform-origin:left center;animation:logoShrink linear both;animation-timeline:scroll(root);animation-range:0 160px}
+  .sprog{animation:prog linear both;animation-timeline:scroll(root)}
+  .totop{animation:totop linear both;animation-timeline:scroll(root);animation-range:500px 760px}
+}
+@media (max-width: 760px){.hdr nav{display:none}.hdr{justify-content:space-between}}
+
+/* two-lane pipeline */
+.prow{--nw:clamp(84px,15vw,170px);--bw:clamp(60px,8vw,88px);position:relative;display:flex;align-items:flex-start}
+.prow .pnode{width:var(--nw)}
+.prow .pbox{width:var(--bw);height:var(--bw);z-index:3}
+.prow .ptrack{height:var(--bw)}
+.ftrack{position:absolute;top:0;height:var(--bw);left:calc(var(--nw) / 2 + var(--bw) / 2 + 4px);right:calc(var(--nw) / 2 + var(--bw) / 2 + 4px);z-index:1}
+.lane{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.08em;color:#5B635F;display:flex;align-items:center;gap:8px}
+.lane::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.vlink{position:relative;display:flex;justify-content:center;height:clamp(52px,6vw,72px)}
+.sprog{position:fixed;top:0;left:0;right:0;height:3px;background:#2BE38A;transform-origin:left;transform:scaleX(0);z-index:60;pointer-events:none}
+
+/* cursor spotlight */
+.spot{position:relative;overflow:hidden;isolation:isolate}
+.spot::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;opacity:0;transition:opacity .35s;
+  background:radial-gradient(140px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.38),transparent 65%)}
+.spot:hover::after{opacity:1}
+.btn-line.spot::after{background:radial-gradient(130px circle at var(--mx,50%) var(--my,50%),rgba(43,227,138,.32),transparent 70%)}
+.spotcard{position:relative}
+.spotcard::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;opacity:0;transition:opacity .5s;
+  background:radial-gradient(520px circle at var(--mx,50%) var(--my,30%),rgba(43,227,138,.10),transparent 60%)}
+.spotcard::before{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;z-index:4;padding:1.5px;opacity:0;transition:opacity .5s;
+  background:radial-gradient(360px circle at var(--mx,50%) var(--my,30%),rgba(14,159,92,.9),transparent 55%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.spotcard:hover::after,.spotcard:hover::before{opacity:1}
+
+/* specular button */
+.spec{color:#FFFFFF;background:linear-gradient(180deg,#34403B 0%,#0C0F0E 52%,#040605 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.06),0 1px 0 rgba(255,255,255,.7),0 12px 26px -10px rgba(12,15,14,.6)}
+.spec:hover{color:#FFFFFF;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -1px 0 rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.1),0 1px 0 rgba(255,255,255,.7),0 18px 34px -12px rgba(12,15,14,.65)}
+.spec::before{content:"";position:absolute;left:8%;right:8%;top:1.5px;height:46%;border-radius:999px;pointer-events:none;z-index:-1;
+  background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.04))}
+.spec .sheen{position:absolute;top:-20%;bottom:-20%;left:-45%;width:32%;pointer-events:none;z-index:-1;transform:skewX(-22deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55) 50%,transparent);animation:sheen 4.2s 1.6s cubic-bezier(.45,0,.2,1) infinite}
+.spec:hover .sheen{animation-duration:1.4s;animation-delay:0s}
+@keyframes sheen{0%{left:-45%}32%,100%{left:130%}}
+.spec.green{color:#0C0F0E;background:linear-gradient(180deg,#8CF7C6 0%,#2BE38A 50%,#14BE6B 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),inset 0 -1px 0 rgba(5,89,44,.45),0 1px 0 rgba(255,255,255,.2),0 14px 30px -10px rgba(43,227,138,.6)}
+.spec.green:hover{color:#0C0F0E}
+.spec.green::before{background:linear-gradient(180deg,rgba(255,255,255,.65),rgba(255,255,255,.05))}
+
+/* section-to-section transitions */
+@keyframes sxIn{from{clip-path:inset(5% 4% 0 4% round 48px)}to{clip-path:inset(0 0 0 0 round 0)}}
+@keyframes sxOut{to{transform:scale(.95);opacity:.3}}
+@keyframes totop{from{opacity:0;transform:translateY(16px) scale(.9);visibility:hidden}to{opacity:1;transform:none;visibility:visible}}
+@supports (animation-timeline: view()){
+  .sx{transform-origin:50% 100%;animation:sxIn linear both,sxOut linear both;animation-timeline:view(),view();animation-range:entry 0% entry 85%,exit 15% exit 100%}
+  .sx-flat{transform-origin:50% 100%;animation:sxOut linear both;animation-timeline:view();animation-range:exit 15% exit 100%}
+}
+
+/* back to top */
+.totop{position:fixed;right:24px;bottom:24px;z-index:55;width:52px;height:52px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#0C0F0E;
+  background:rgba(255,255,255,.6);-webkit-backdrop-filter:blur(16px) saturate(1.8);backdrop-filter:blur(16px) saturate(1.8);
+  border:1px solid rgba(255,255,255,.85);box-shadow:0 14px 30px -12px rgba(12,15,14,.4),inset 0 1px 0 rgba(255,255,255,.95);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.totop:hover{color:#0C0F0E;transform:translateY(-3px)}
+.totop svg,.topbtn svg{transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.totop:hover svg,.topbtn:hover svg{transform:translateY(-3px)}
+
+@supports (animation-timeline: view()){
+  .rv{animation:rise linear backwards;animation-timeline:view();animation-range:entry 0% cover 28%}
+  .rv2{animation:rise linear backwards;animation-timeline:view();animation-range:entry 10% cover 34%}
+  .rv3{animation:rise linear backwards;animation-timeline:view();animation-range:entry 20% cover 40%}
+}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div id="top" style="min-height: 100vh; background: #FFFFFF; color: #0C0F0E; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 17px; line-height: 1.55; overflow-x: clip">
+  <div class="sprog" aria-hidden="true"></div>
+
+  <div style="background: #0C0F0E; color: #FFD27A; font-size: 13px; text-align: center; padding: 7px 16px">Sandbox: test money only. No real charges.</div>
+
+  <svg aria-hidden="true" width="0" height="0" style="position: absolute"><filter id="lg-distort" x="0%" y="0%" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.006 0.02" numOctaves="2" seed="11" result="noise"></feTurbulence><feGaussianBlur in="noise" stdDeviation="2.5" result="soft"></feGaussianBlur><feDisplacementMap in="SourceGraphic" in2="soft" scale="46" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter></svg>
+  <div class="hdr-wrap">
+  <header class="hdr">
+    <span class="lg lg-fx" aria-hidden="true"></span><span class="lg lg-tint" aria-hidden="true"></span><span class="lg lg-shine" aria-hidden="true"></span>
+    <a href="#top" class="logo" style="display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 21px; letter-spacing: -0.02em; flex: none">
+      <img src="/_blob/561a272e3f3c781b2b4d5555d2521dd1" alt="" aria-hidden="true" width="32" height="32" style="display: block; flex: none; object-fit: contain">
+      <span>PayPer<span class="ac">402</span></span>
+    </a>
+    <nav aria-label="Main"><a href="#how" class="navlink">How it works</a>
+      <a href="#sides" class="navlink">For sellers</a>
+      <a href="#spec" class="navlink">Spec</a>
+    </nav>
+    <a href="SignIn.dc.html" class="btn spec spot" onPointerMove="{{ spot }}" style="min-height: 44px; padding: 0 20px; font-size: 15px; flex: none"><span class="sheen" aria-hidden="true"></span>Try the live demo</a>
+  </header>
+  </div>
+
+  <section class="sx-flat" style="position: relative">
+    <div aria-hidden="true" style="position: absolute; inset: 0 0 30% 0; background-image: radial-gradient(#D6D9D2 1.2px, transparent 1.2px); background-size: 26px 26px; -webkit-mask-image: radial-gradient(70% 70% at 50% 20%, #000 0%, transparent 75%); mask-image: radial-gradient(70% 70% at 50% 20%, #000 0%, transparent 75%)"></div>
+    <div class="wrap" style="position: relative; padding-top: 72px; padding-bottom: 40px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px">
+      <a href="#spec" class="rise" style="animation-delay: .05s; display: inline-flex; gap: 10px; align-items: center; background: #FFFFFF; border: 1px solid #E2E4DE; color: #0C0F0E; font-weight: 600; font-size: 14px; border-radius: 999px; padding: 6px 8px 6px 6px; box-shadow: 0 2px 8px rgba(12,15,14,.05)">
+        <span style="background: #0C0F0E; color: #2BE38A; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 700" class="mono">x402</span>The first PayPal rail for HTTP payments<span aria-hidden="true" style="color: #5B635F">→</span>
+      </a>
+      <h1 style="margin: 0; font-size: clamp(48px, 7.6vw, 96px); line-height: 1.2; letter-spacing: -0.05em; font-weight: 800; max-width: 1000px; color: #0c0f0e"><span class="w" style="animation-delay: 0.10s">Agents</span> <span class="w" style="animation-delay: 0.18s; color: #087A3D">pay</span> <span class="w" style="animation-delay: 0.26s">via</span> <span class="w" style="animation-delay: 0.34s">x402</span><br><span class="w" style="animation-delay: 0.42s">settled</span> <span class="w" style="animation-delay: 0.50s">with</span> <span class="w" style="animation-delay: 0.58s">PayPal</span></h1>
+      <p class="rise" style="animation-delay: .7s; margin: 0; font-size: clamp(19px, 2vw, 22px); color: #3A423E; font-weight: 500">Cents per call. No crypto, one charge.</p>
+      <div class="rise" style="animation-delay: .82s; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center">
+        <a href="SignIn.dc.html" class="btn spec spot" onPointerMove="{{ spot }}" style="min-height: 56px; padding: 0 30px; font-size: 17px"><span class="sheen" aria-hidden="true"></span>Try the live demo<svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+        <a href="#sides" class="btn btn-line spot" onPointerMove="{{ spot }}" style="min-height: 56px">For API sellers</a>
+      </div>
+    </div>
+
+    <div class="wrap win" style="position: relative; padding-bottom: 96px">
+      <div class="spotcard" onPointerMove="{{ spot }}" style="max-width: 1080px; margin: 0 auto; background: #FFFFFF; border: 1px solid #E2E4DE; border-radius: 28px; box-shadow: 0 50px 100px -40px rgba(12,15,14,.3), 0 20px 40px -24px rgba(12,15,14,.16); overflow: hidden; text-align: left">
+        <div role="img" aria-label="{{ pipeAria }}" style="position: relative; padding: clamp(28px, 4vw, 44px) clamp(14px, 4vw, 56px) clamp(28px, 4vw, 40px); background-image: radial-gradient(#E6E8E2 1px, transparent 1px); background-size: 20px 20px">
+          <div class="lane" style="margin-bottom: 18px">EVERY CALL · NO HUMAN CLICK · NO PAYPAL FEE</div>
+          <div class="prow">
+            <div class="ftrack">
+              <div class="pline"></div>
+              <div class="pline-on" style="background: #0C0F0E; opacity: {{ topOn }}"></div>
+              <sc-if value="{{ pS0 }}" hint-placeholder-val="{{ false }}"><span class="chip fwd" style="background: #0C0F0E; color: #FFFFFF"><span class="t">GET /quote</span></span></sc-if>
+              <sc-if value="{{ pS1 }}" hint-placeholder-val="{{ false }}"><span class="chip back" style="background: #FFF1D6; color: #6B4200; border: 1px solid #F0C978"><span class="t">402 · $0.02</span></span></sc-if>
+              <sc-if value="{{ pS2 }}" hint-placeholder-val="{{ false }}"><span class="chip fwd" style="background: #5B3FD9; color: #FFFFFF"><span class="t">signed promise</span></span></sc-if>
+              <sc-if value="{{ pS4 }}" hint-placeholder-val="{{ false }}"><span class="chip back" style="background: #2BE38A; color: #0C0F0E"><span class="t">200 OK</span></span></sc-if>
+              <sc-if value="{{ pS5 }}" hint-placeholder-val="{{ false }}">
+                <span class="chip strm" style="background: #0C0F0E; color: #FFFFFF; animation-delay: 0s"><span class="t">call</span></span>
+                <span class="chip strm" style="background: #0C0F0E; color: #FFFFFF; animation-delay: .33s"><span class="t">call</span></span>
+                <span class="chip strm" style="background: #0C0F0E; color: #FFFFFF; animation-delay: .66s"><span class="t">call</span></span>
+              </sc-if>
+            </div>
+
+            <div class="pnode">
+              <div class="pbox" style="background: #0C0F0E; box-shadow: {{ agentGlow }}">
+                <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3.5"></rect><path d="M12 4v4"></path><circle cx="12" cy="3.5" r="1" fill="#2BE38A" stroke="#2BE38A"></circle><path d="M9.5 13h.01M14.5 13h.01" stroke-width="2.6"></path></svg>
+                <sc-if value="{{ agentJev }}" hint-placeholder-val="{{ false }}"><span class="bdg jev" style="background: #FFFFFF; color: #0C0F0E; border: 1.5px solid #0C0F0E"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#087A3D" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg>Jev · serves task <span style="color: #087A3D">0.96</span></span></sc-if>
+                <sc-if value="{{ agentSigned }}" hint-placeholder-val="{{ false }}"><span class="bdg" style="background: #ECE8FF; color: #3A2799"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>signs</span></sc-if>
+                <sc-if value="{{ agentData }}" hint-placeholder-val="{{ false }}"><span class="bdg" style="background: #DDF9E9; color: #05592C"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg>data</span></sc-if>
+              </div>
+              <strong style="font-size: clamp(13px, 1.4vw, 16px); letter-spacing: -0.01em">Your agent</strong>
+              <span class="mono" style="font-size: 12px; color: #5B635F; margin-top: -6px">research-bot</span>
+            </div>
+
+            <div class="ptrack"></div>
+
+            <div class="pnode">
+              <div class="pbox" style="background: #FFFFFF; border: 1.5px solid #E2E4DE; box-shadow: {{ meterGlow }}">
+                <img src="/_blob/561a272e3f3c781b2b4d5555d2521dd1" alt="" aria-hidden="true" style="width: 52%; height: 52%; display: block; object-fit: contain">
+                <sc-if value="{{ meterAdd }}" hint-placeholder-val="{{ false }}"><span class="bdg" style="background: #2BE38A; color: #0C0F0E">+$0.02</span></sc-if>
+                <sc-if value="{{ meterFull }}" hint-placeholder-val="{{ false }}"><span class="bdg" style="background: #0C0F0E; color: #2BE38A">near $5.00</span></sc-if>
+              </div>
+              <strong style="font-size: clamp(13px, 1.4vw, 16px); letter-spacing: -0.01em">PayPer402 meter</strong>
+              <span class="mono tnum" style="font-size: 12px; color: #0C0F0E; font-weight: 700; margin-top: -6px">{{ meterAmt }} <span style="color: #5B635F; font-weight: 500">/ $5.00</span></span>
+              <div style="width: 70%; height: 5px; background: #EEF0EB; border-radius: 99px; overflow: hidden; margin-top: -2px"><div style="height: 100%; width: {{ meterW }}; background: #0E9F5C; border-radius: 99px; transition: width .65s cubic-bezier(.2,.8,.2,1)"></div></div>
+            </div>
+
+            <div class="ptrack">
+              <sc-if value="{{ pS3 }}" hint-placeholder-val="{{ false }}"><span class="chip back" style="background: #FFFFFF; color: #3A2799; border: 1.5px solid #5B3FD9; z-index: 4"><span class="t">verify</span></span></sc-if>
+            </div>
+
+            <div class="pnode">
+              <div class="pbox" style="background: #FFFFFF; border: 1.5px solid #0C0F0E; box-shadow: {{ apiGlow }}">
+                <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none" stroke="#0C0F0E" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="6.5" rx="2"></rect><rect x="4" y="13.5" width="16" height="6.5" rx="2"></rect><path d="M8 7.2h.01M8 16.7h.01" stroke-width="2.8"></path></svg>
+                <sc-if value="{{ api402 }}" hint-placeholder-val="{{ false }}"><span class="bdg" style="background: #FFF1D6; color: #6B4200">402</span></sc-if>
+                <sc-if value="{{ api200 }}" hint-placeholder-val="{{ false }}"><span class="bdg" style="background: #2BE38A; color: #0C0F0E">200</span></sc-if>
+              </div>
+              <strong style="font-size: clamp(13px, 1.4vw, 16px); letter-spacing: -0.01em">Paid API</strong>
+              <span class="mono" style="font-size: 12px; color: #5B635F; margin-top: -6px">$0.02 / call</span>
+            </div>
+          </div>
+
+          <div class="vlink">
+            <div style="position: relative; width: 2px; height: 100%; background: repeating-linear-gradient(180deg, #CDD1C9 0 6px, transparent 6px 12px)"><div style="position: absolute; inset: 0; background: #0E9F5C; opacity: {{ vOn }}; transition: opacity .5s"></div></div>
+            <div class="lane" style="position: absolute; left: 0; bottom: 6px">ONCE · NEAR $5.00 OR DAILY</div>
+          </div>
+
+          <div class="prow">
+            <div class="pnode">
+              <div class="pbox" style="background: #F4F5F1; border: 1.5px solid #E2E4DE; box-shadow: {{ youGlow }}">
+                <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none" stroke="#0C0F0E" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"></circle><path d="M5 20c1.2-3.6 4-5.5 7-5.5s5.8 1.9 7 5.5"></path></svg>
+                <sc-if value="{{ youDebit }}" hint-placeholder-val="{{ false }}"><span class="bdg" style="background: #0C0F0E; color: #FFFFFF">−$5.00</span></sc-if>
+              </div>
+              <strong style="font-size: clamp(13px, 1.4vw, 16px); letter-spacing: -0.01em">Operator</strong>
+              <span class="mono" style="font-size: 12px; color: #5B635F; margin-top: -6px">pays via PayPal</span>
+            </div>
+
+            <div class="ptrack">
+              <div class="pline"></div>
+              <div class="pline-on" style="background: #0E9F5C; opacity: {{ botLOn }}"></div>
+              <sc-if value="{{ pS6 }}" hint-placeholder-val="{{ false }}"><span class="chip fwd" style="background: #0C0F0E; color: #FFFFFF"><span class="t">$5.00</span></span></sc-if>
+            </div>
+
+            <div class="pnode">
+              <div class="pbox" style="background: #FFFFFF; border: 1.5px solid #E2E4DE; box-shadow: {{ paypalGlow }}">
+                <img src="/_blob/f0ff82cbbe3d272de32f0f7edb4c467a" alt="PayPal" style="height: 50%; width: auto; display: block">
+                <sc-if value="{{ oneFee }}" hint-placeholder-val="{{ false }}"><span class="bdg" style="background: #2BE38A; color: #0C0F0E">1 fee</span></sc-if>
+              </div>
+              <strong style="font-size: clamp(13px, 1.4vw, 16px); letter-spacing: -0.01em">PayPer402</strong>
+              <span class="mono" style="font-size: 12px; color: #5B635F; margin-top: -6px">settled with PayPal</span>
+            </div>
+
+            <div class="ptrack">
+              <div class="pline"></div>
+              <div class="pline-on" style="background: #0E9F5C; opacity: {{ botROn }}"></div>
+              <sc-if value="{{ pS7 }}" hint-placeholder-val="{{ false }}"><span class="chip fwd" style="background: #2BE38A; color: #0C0F0E"><span class="t">$5.00</span></span></sc-if>
+            </div>
+
+            <div class="pnode">
+              <div class="pbox" style="background: #ECE8FF; border: 1.5px solid #D6CCFF; box-shadow: {{ sellerGlow }}">
+                <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none" stroke="#3A2799" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5 5.5 4h13L20 9.5"></path><path d="M4 9.5c0 1.4 1.2 2.5 2.7 2.5s2.6-1.1 2.6-2.5c0 1.4 1.2 2.5 2.7 2.5s2.7-1.1 2.7-2.5c0 1.4 1.2 2.5 2.6 2.5S20 10.9 20 9.5"></path><path d="M5.5 12v8h13v-8"></path></svg>
+                <sc-if value="{{ sellerPaid }}" hint-placeholder-val="{{ false }}"><span class="bdg" style="background: #2BE38A; color: #0C0F0E">+$4.34 net</span></sc-if>
+              </div>
+              <strong style="font-size: clamp(13px, 1.4vw, 16px); letter-spacing: -0.01em">Seller revenue</strong>
+              <span class="mono" style="font-size: 12px; color: #5B635F; margin-top: -6px">Acme Data</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid #EEF0EB; background: #FAFBF8; padding: 20px clamp(16px, 4vw, 40px); display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; align-items: center; gap: 14px; min-height: 30px">
+            <span class="mono" style="flex: none; font-size: 12px; font-weight: 700; color: #FFFFFF; background: #0C0F0E; border-radius: 999px; padding: 4px 10px">{{ stepNo }}/09</span>
+            <sc-for list="{{ caps }}" as="c" hint-placeholder-count="1">
+              <sc-if value="{{ c.show }}" hint-placeholder-val="{{ false }}"><p class="cap" style="margin: 0; font-size: clamp(16px, 1.8vw, 19px); font-weight: 600; letter-spacing: -0.01em">{{ c.t }}</p></sc-if>
+            </sc-for>
+          </div>
+          <div aria-hidden="true" style="display: flex; gap: 6px">
+            <sc-for list="{{ segs7 }}" as="g" hint-placeholder-count="9"><span style="{{ g.style }}"></span></sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sx" style="background: #F4F5F1">
+    <div class="wrap" style="padding-top: 104px; padding-bottom: 104px; display: flex; flex-direction: column; gap: 44px">
+      <div class="rv" style="display: flex; flex-direction: column; gap: 14px; max-width: 760px">
+        <span class="eyebrow">THE PROBLEM</span>
+        <h2 class="h2">APIs were built<br>for humans first.</h2>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px">
+        <article class="card rv" style="overflow: hidden; display: flex; flex-direction: column">
+          <div style="background: #ECE8FF; padding: 28px; height: 210px; box-sizing: border-box; display: flex; align-items: center; justify-content: center">
+            <div class="shake" style="width: 100%; max-width: 250px; background: #FFFFFF; border-radius: 14px; padding: 16px; box-shadow: 0 12px 30px -12px rgba(58,39,153,.35); display: flex; flex-direction: column; gap: 9px; font-size: 12px">
+              <strong style="font-size: 14px">Create your account</strong>
+              <div style="height: 28px; border: 1px solid #E2E4DE; border-radius: 8px; display: flex; align-items: center; padding: 0 10px; color: #5B635F">agent@research-bot</div>
+              <div style="height: 28px; border: 1px solid #E2E4DE; border-radius: 8px; display: flex; align-items: center; padding: 0 10px" class="mono">••••••••</div>
+              <div style="display: flex; align-items: center; gap: 8px; border: 1.5px solid #B42318; border-radius: 8px; padding: 6px 10px; color: #8A1C12; font-weight: 700"><span style="width: 14px; height: 14px; border: 1.5px solid #B42318; border-radius: 3px"></span>Verify you're human</div>
+            </div>
+          </div>
+          <div style="padding: 24px 26px 28px; display: flex; flex-direction: column; gap: 8px"><h3 style="margin: 0; font-size: 21px; letter-spacing: -0.02em">Agents can't sign up</h3><p style="margin: 0; color: #4F5753; font-size: 16px">Accounts, cards, captchas and API keys all expect a human at a keyboard.</p></div>
+        </article>
+        <article class="card rv2" style="overflow: hidden; display: flex; flex-direction: column">
+          <div style="background: #FFF1D6; padding: 0 28px; height: 210px; box-sizing: border-box; overflow: hidden; position: relative; -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent)">
+            <div class="marquee" style="display: flex; flex-direction: column; gap: 10px; padding-top: 10px">
+              <sc-for list="{{ subs }}" as="x" hint-placeholder-count="8">
+                <div style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border-radius: 12px; padding: 10px 14px; font-size: 13.5px; box-shadow: 0 6px 16px -10px rgba(107,66,0,.4)"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F59E0B"></span>{{ x.n }}<span class="mono tnum" style="margin-left: auto; font-weight: 700">{{ x.p }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="padding: 24px 26px 28px; display: flex; flex-direction: column; gap: 8px"><h3 style="margin: 0; font-size: 21px; letter-spacing: -0.02em">30 APIs, 30 subscriptions</h3><p style="margin: 0; color: #4F5753; font-size: 16px">Nobody wants a monthly plan for an API their agent calls twice a week.</p></div>
+        </article>
+        <article class="card rv3" style="overflow: hidden; display: flex; flex-direction: column">
+          <div style="background: #FDE7E4; padding: 28px; height: 210px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 18px">
+            <div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700"><span>The API call</span><span class="mono">$0.02</span></div><div style="height: 14px; background: rgba(255,255,255,.7); border-radius: 99px"><div class="grow" style="height: 100%; width: 6.6%; background: #0E9F5C; border-radius: 99px"></div></div></div>
+            <div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #8A1C12"><span>A typical card fee</span><span class="mono">$0.30</span></div><div style="height: 14px; background: rgba(255,255,255,.7); border-radius: 99px"><div class="grow" style="animation-delay: .6s; height: 100%; width: 100%; background: #B42318; border-radius: 99px"></div></div></div>
+          </div>
+          <div style="padding: 24px 26px 28px; display: flex; flex-direction: column; gap: 8px"><h3 style="margin: 0; font-size: 21px; letter-spacing: -0.02em">Fees eat the price</h3><p style="margin: 0; color: #4F5753; font-size: 16px">Charging a card for every 2¢ call costs more than the call itself.</p></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="wrap sx-flat" style="padding-top: 112px; padding-bottom: 112px; display: flex; flex-direction: column; gap: 44px">
+    <div class="rv" style="display: flex; flex-direction: column; gap: 14px; max-width: 720px">
+      <span class="eyebrow">HOW IT WORKS</span>
+      <h2 class="h2">Like a toll pass, for&nbsp;APIs.</h2>
+      <p style="margin: 0; font-size: 19px; color: #3A423E">Four steps. You only do the first one.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 32px; align-items: center">
+      <div role="tablist" aria-label="How it works" class="rv" style="display: flex; flex-direction: column; gap: 4px">
+        <sc-for list="{{ steps }}" as="s" hint-placeholder-count="4">
+          <button type="button" role="tab" aria-selected="{{ s.active }}" class="stepbtn" onClick="{{ s.pick }}" style="{{ s.style }}">
+            <div style="display: flex; gap: 14px; align-items: center">
+              <span class="mono" style="{{ s.numStyle }}">{{ s.n }}</span>
+              <strong style="font-size: 20px; letter-spacing: -0.02em">{{ s.title }}</strong>
+            </div>
+            <span style="font-size: 16px; color: #3A423E; padding-left: 50px">{{ s.text }}</span>
+            <sc-if value="{{ s.active }}" hint-placeholder-val="{{ false }}">
+              <span style="margin: 4px 0 0 50px; height: 3px; background: #E2E4DE; border-radius: 3px; overflow: hidden; display: block"><span class="prog" style="display: block; height: 100%; background: #0C0F0E"></span></span>
+            </sc-if>
+          </button>
+        </sc-for>
+      </div>
+
+      <div class="rv2" style="background: #F4F5F1; border-radius: 28px; padding: clamp(18px, 3vw, 36px); min-height: 400px; box-sizing: border-box; display: flex; align-items: center">
+        <sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">
+          <div class="st" style="width: 100%; background: #FFFFFF; border-radius: 20px; padding: 24px; box-shadow: 0 30px 60px -30px rgba(12,15,14,.3); display: flex; flex-direction: column; gap: 12px">
+            <strong style="font-size: 17px">Link your PayPal account</strong>
+            <div style="display: flex; align-items: center; gap: 10px; background: #0C0F0E; color: #FFFFFF; border-radius: 12px; padding: 13px 16px; font-weight: 700; font-size: 15px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2BE38A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>Link PayPal account</div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #ECE8FF; color: #3A2799; border-radius: 12px; padding: 12px 16px; font-size: 14px; font-weight: 600"><svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>Approving on PayPal's page…</div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #DDF9E9; color: #05592C; border-radius: 12px; padding: 12px 16px; font-size: 14px; font-weight: 700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg>Linked · <span class="mono" style="font-weight: 600">al***@example.com</span></div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px">
+              <span class="mono" style="font-size: 13px; border: 1px solid #E2E4DE; border-radius: 999px; padding: 5px 12px">per call $0.10</span>
+              <span class="mono" style="font-size: 13px; border: 1px solid #E2E4DE; border-radius: 999px; padding: 5px 12px">daily $10.00</span>
+              <span class="mono" style="font-size: 13px; border: 1px solid #E2E4DE; border-radius: 999px; padding: 5px 12px">auto-charge $5.00</span>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">
+          <div class="st mono" style="width: 100%; background: #0C0F0E; color: #C5CEC9; border-radius: 20px; padding: 24px; font-size: 14px; line-height: 1.7; box-shadow: 0 30px 60px -30px rgba(12,15,14,.5); display: flex; flex-direction: column; gap: 2px; overflow-x: auto">
+            <span style="color: #7E8A84"># research-bot calls a paid API</span>
+            <span><span style="color: #2BE38A">GET</span> /v1/quote?symbol=KC</span>
+            <span style="margin-top: 10px"><span style="background: #3A2A08; color: #FFB020; border-radius: 6px; padding: 2px 8px; font-weight: 700">HTTP/1.1 402 Payment Required</span></span>
+            <span>PAYMENT-REQUIRED: <span style="color: #C79BFF">eyJ4NDAyVmVyc2lvbiI6MiwicmVz…</span></span>
+            <span style="margin-top: 10px; color: #7E8A84"># decoded</span>
+            <span>{ "x402Version": 2,</span>
+            <span>&nbsp;&nbsp;"accepts": [{ "scheme": "batch-settlement", "network": "paypal:sandbox",</span>
+            <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"asset": "USD", "amount": <span style="color: #FFB020; font-weight: 700">"2"</span>, "payTo": "sel_Qm2…" }] }</span>
+            <span style="color: #7E8A84"># amount is in cents: $0.02</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+          <div class="st mono" style="width: 100%; background: #0C0F0E; color: #C5CEC9; border-radius: 20px; padding: 24px; font-size: 14px; line-height: 1.7; box-shadow: 0 30px 60px -30px rgba(12,15,14,.5); display: flex; flex-direction: column; gap: 2px; overflow-x: auto">
+            <span style="color: #7E8A84"># signs a payment promise and retries</span>
+            <span><span style="color: #2BE38A">GET</span> /v1/quote?symbol=KC</span>
+            <span>PAYMENT-SIGNATURE: <span class="type" style="color: #C79BFF">eyJ4NDAyVmVyc2lvbiI6MiwicmVz…</span></span>
+            <span style="margin-top: 10px"><span style="background: #0C2A1B; color: #2BE38A; border-radius: 6px; padding: 2px 8px; font-weight: 700">HTTP/1.1 200 OK</span></span>
+            <span>PAYMENT-RESPONSE: <span style="color: #C79BFF">eyJzdWNjZXNzIjp0cnVlLCJ0cmFu…</span></span>
+            <span>{ "symbol": "KC", "price": "…" }</span>
+            <span style="color: #7E8A84"># paid $0.02 · not yet charged</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isStep3 }}" hint-placeholder-val="{{ false }}">
+          <div class="st" style="width: 100%; background: #FFFFFF; border-radius: 20px; padding: 20px; box-shadow: 0 30px 60px -30px rgba(12,15,14,.3); display: flex; flex-direction: column; gap: 6px; font-size: 14px">
+            <div style="display: flex; padding: 8px 6px; border-bottom: 1px solid #EEF0EB"><span>Market Quote API</span><span class="mono tnum" style="margin-left: auto">$0.02</span></div>
+            <div style="display: flex; padding: 8px 6px; border-bottom: 1px solid #EEF0EB"><span>Page Summary API</span><span class="mono tnum" style="margin-left: auto">$0.05</span></div>
+            <div style="display: flex; padding: 8px 6px; border-bottom: 1px solid #EEF0EB"><span>Translate API</span><span class="mono tnum" style="margin-left: auto">$0.01</span></div>
+            <div style="display: flex; padding: 8px 6px; border-bottom: 1px solid #EEF0EB; color: #4F5753"><span>+ 140 more paid calls</span><span class="mono tnum" style="margin-left: auto">$4.79</span></div>
+            <div style="margin-top: 8px; background: #0C0F0E; color: #FFFFFF; border-radius: 14px; padding: 16px; display: flex; align-items: center; gap: 12px"><div style="display: flex; flex-direction: column"><span style="font-size: 13px; color: #B4BEB8">One PayPal charge · 143 calls</span><span class="mono tnum" style="font-size: 28px; font-weight: 700; color: #2BE38A">$4.87</span></div><span style="margin-left: auto; font-size: 13px; font-weight: 700; color: #2BE38A; display: inline-flex; gap: 6px; align-items: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg>= exact sum</span></div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </section>
+
+  <section class="sx" style="background: #0C0F0E; color: #FFFFFF">
+    <div class="wrap" style="padding-top: 112px; padding-bottom: 112px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 56px; align-items: center">
+      <div class="rv" style="display: flex; flex-direction: column; gap: 22px">
+        <span class="eyebrow" style="color: #2BE38A">ONE CHARGE</span>
+        <h2 class="h2">Hundreds of tiny calls. <span style="color: #2BE38A">One&nbsp;fee.</span></h2>
+        <p style="margin: 0; font-size: 19px; color: #C5CEC9">Paid calls add up on a meter. When it nears your auto-charge amount, or once a day after midnight UTC, we charge your PayPal account once.</p>
+        <div style="display: flex; flex-direction: column; gap: 14px; padding-top: 8px">
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; justify-content: space-between; font-size: 14px; color: #B4BEB8"><span>Charge a card on every call</span><span class="mono">143 fees</span></div><div style="height: 10px; background: #1F2724; border-radius: 99px"><div class="grow" style="height: 100%; width: 100%; background: #FF9C8F; border-radius: 99px"></div></div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 700">PayPer402</span><span class="mono" style="color: #2BE38A; font-weight: 700">1 fee</span></div><div style="height: 10px; background: #1F2724; border-radius: 99px"><div class="grow" style="animation-delay: .7s; height: 100%; width: 1.5%; min-width: 10px; background: #2BE38A; border-radius: 99px"></div></div></div>
+        </div>
+      </div>
+      <div class="rv2" style="background: #141A18; border: 1px solid #26302C; border-radius: 28px; padding: 30px; display: flex; flex-direction: column; gap: 20px; position: relative">
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #B4BEB8"><span class="live" style="width: 8px; height: 8px; border-radius: 50%; background: #2BE38A"></span>Not yet charged<span class="mono tnum" style="margin-left: auto">charges so far · {{ chargesText }}</span></div>
+        <div class="mono tnum" style="font-size: clamp(60px, 7vw, 88px); font-weight: 700; letter-spacing: -0.05em; line-height: 1">{{ centsText }}</div>
+        <div role="img" aria-label="Meter filling toward $5.00" style="display: grid; grid-template-columns: repeat(25, minmax(0, 1fr)); gap: 4px">
+          <sc-for list="{{ segs }}" as="g" hint-placeholder-count="25">
+            <span class="seg" style="height: 30px; border-radius: 4px; background: {{ g.bg }}"></span>
+          </sc-for>
+        </div>
+        <div class="mono" style="display: flex; justify-content: space-between; font-size: 12px; color: #7E8A84"><span>$0.00</span><span>auto-charge near $5.00</span></div>
+        <div style="min-height: 64px">
+          <sc-if value="{{ flash }}" hint-placeholder-val="{{ false }}">
+            <div class="toast" style="background: #2BE38A; color: #0C0F0E; border-radius: 16px; padding: 14px 16px; display: flex; gap: 12px; align-items: center; font-weight: 700"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg>PayPal charge · $5.00 · completed<span class="mono" style="margin-left: auto; font-size: 12px; font-weight: 600">1 fee</span></div>
+          </sc-if>
+          <sc-if value="{{ noFlash }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; gap: 10px; align-items: center; background: #1F2724; border-radius: 14px; padding: 14px 16px; font-size: 14px"><span style="color: #C5CEC9">Last paid call</span><span style="color: #EEF2EF; font-weight: 600">{{ lastSvc }}</span><span class="mono tnum" style="margin-left: auto; color: #2BE38A; font-weight: 700">+{{ lastP }}</span></div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sides" class="wrap sx-flat" style="padding-top: 112px; padding-bottom: 112px; display: flex; flex-direction: column; gap: 36px; align-items: center">
+    <div class="rv" style="display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center">
+      <span class="eyebrow">FOR BOTH SIDES</span>
+      <h2 class="h2">One rail. Two sides of the&nbsp;call.</h2>
+    </div>
+    <div role="tablist" aria-label="Audience" class="rv" style="display: inline-flex; background: #F4F5F1; border-radius: 999px; padding: 5px; gap: 4px">
+      <button type="button" role="tab" aria-selected="{{ isOp }}" class="tab" onClick="{{ pickOp }}" style="{{ opStyle }}">I run AI agents</button>
+      <button type="button" role="tab" aria-selected="{{ isSeller }}" class="tab" onClick="{{ pickSeller }}" style="{{ sellerStyle }}">I sell an API</button>
+    </div>
+    <sc-if value="{{ isOp }}" hint-placeholder-val="{{ true }}">
+      <div class="st" style="width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 40px; align-items: center">
+        <div style="background: #DDF9E9; border-radius: 32px; padding: 32px; display: flex; flex-direction: column; gap: 12px">
+          <div style="background: #FFFFFF; border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 16px 36px -20px rgba(5,89,44,.45)">
+            <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700"><span>Spent today</span><span class="mono tnum">$2.46 / $10.00</span></div>
+            <div style="height: 10px; background: #EEF0EB; border-radius: 99px; overflow: hidden"><div class="grow" style="height: 100%; width: 24.6%; background: #0E9F5C"></div></div>
+          </div>
+          <div style="background: #FFFFFF; border-radius: 18px; padding: 4px 20px; box-shadow: 0 16px 36px -20px rgba(5,89,44,.45)">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #EEF0EB; font-size: 15px"><span style="width: 9px; height: 9px; border-radius: 50%; background: #0E9F5C"></span><span class="mono">research-bot</span><span class="mono tnum" style="margin-left: auto; font-weight: 700">$1.84</span></div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #EEF0EB; font-size: 15px"><span style="width: 9px; height: 9px; border-radius: 50%; background: #7C5CFF"></span><span class="mono">price-watcher</span><span class="mono tnum" style="margin-left: auto; font-weight: 700">$0.62</span></div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0; font-size: 15px; color: #4F5753"><span style="width: 9px; height: 9px; border-radius: 2px; background: #B9BEB6"></span><span class="mono">translator-01</span><span style="margin-left: auto; font-size: 13px; font-weight: 700">Paused</span></div>
+          </div>
+          <div style="background: #0C0F0E; color: #FFFFFF; border-radius: 16px; padding: 14px 16px; font-size: 14px">"I skipped the premium news API ($0.25). The standard one covered it."<div style="color: #2BE38A; font-weight: 700; margin-top: 4px; font-size: 13px">Spend report · research-bot</div></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 20px">
+          <h3 style="margin: 0; font-size: clamp(28px, 3vw, 38px); letter-spacing: -0.03em; line-height: 1.1">Give agents a budget, not your card.</h3>
+          <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; font-size: 18px">
+            <li style="display: flex; gap: 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#087A3D" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 5 5L20 7"></path></svg>Limits per call, per day and in total</li>
+            <li style="display: flex; gap: 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#087A3D" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 5 5L20 7"></path></svg>One PayPal charge, not hundreds</li>
+            <li style="display: flex; gap: 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#087A3D" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 5 5L20 7"></path></svg>Stop anytime from your PayPal account</li>
+            <li style="display: flex; gap: 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#087A3D" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 5 5L20 7"></path></svg>A spend report written by the agent</li>
+          </ul>
+          <a href="SignIn.dc.html" class="btn spec spot" onPointerMove="{{ spot }}" style="align-self: flex-start"><span class="sheen" aria-hidden="true"></span>Try the operator demo<svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isSeller }}" hint-placeholder-val="{{ false }}">
+      <div class="st" style="width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 40px; align-items: center">
+        <div style="background: #ECE8FF; border-radius: 32px; padding: 32px; display: flex; flex-direction: column; gap: 12px">
+          <div style="background: #FFFFFF; border-radius: 18px; padding: 4px 20px; box-shadow: 0 16px 36px -20px rgba(58,39,153,.45)">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid #EEF0EB; font-size: 15px"><span class="mono" style="font-weight: 700; color: #087A3D">GET</span><span class="mono">/v1/quote</span><span class="mono tnum" style="margin-left: auto; background: #FFF1D6; color: #6B4200; border-radius: 8px; padding: 3px 9px; font-weight: 700">$0.02</span></div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid #EEF0EB; font-size: 15px"><span class="mono" style="font-weight: 700; color: #5B3FD9">POST</span><span class="mono">/v1/summarize</span><span class="mono tnum" style="margin-left: auto; background: #FFF1D6; color: #6B4200; border-radius: 8px; padding: 3px 9px; font-weight: 700">$0.05</span></div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 13px 0; font-size: 15px"><span class="mono" style="font-weight: 700; color: #5B3FD9">POST</span><span class="mono">/v1/translate</span><span class="mono tnum" style="margin-left: auto; background: #FFF1D6; color: #6B4200; border-radius: 8px; padding: 3px 9px; font-weight: 700">$0.01</span></div>
+          </div>
+          <div style="align-self: flex-end; background: #FFFFFF; border-radius: 16px; padding: 12px 16px; box-shadow: 0 16px 36px -20px rgba(58,39,153,.45); display: flex; flex-direction: column"><span style="font-size: 13px; color: #4F5753; font-weight: 600">Settled revenue</span><span class="mono tnum" style="font-size: 22px; font-weight: 700">$4.34 net</span></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 20px">
+          <h3 style="margin: 0; font-size: clamp(28px, 3vw, 38px); letter-spacing: -0.03em; line-height: 1.1">Put a price on any endpoint.</h3>
+          <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; font-size: 18px">
+            <li style="display: flex; gap: 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5B3FD9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 5 5L20 7"></path></svg>Price each call, from one cent</li>
+            <li style="display: flex; gap: 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5B3FD9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 5 5L20 7"></path></svg>A few lines of standard x402 middleware</li>
+            <li style="display: flex; gap: 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5B3FD9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="m5 12 5 5L20 7"></path></svg>Settled with PayPal. No crypto, no customer accounts</li>
+          </ul>
+          <a href="SellerOverview.dc.html" class="btn btn-ink spot" onPointerMove="{{ spot }}" style="align-self: flex-start">Try the seller demo<svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+        </div>
+      </div>
+    </sc-if>
+  </section>
+
+  <section id="spec" class="sx" style="background: #F4F5F1">
+    <div class="wrap" style="padding-top: 112px; padding-bottom: 112px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 56px; align-items: center">
+      <div class="rv" style="display: flex; flex-direction: column; gap: 20px">
+        <span class="eyebrow">OPEN STANDARD</span>
+        <h2 class="h2"><span class="mono" style="letter-spacing: -0.06em">402</span> finally means something.</h2>
+        <p style="margin: 0; font-size: 19px; color: #3A423E">HTTP reserved <span class="mono">402 Payment Required</span> in 1997. The open x402 standard lets a server name a price and a client pay and retry, all inside HTTP. PayPer402 is the first PayPal rail for it.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px">
+          <a href="#" class="btn btn-ink spot" onPointerMove="{{ spot }}">Read the binding spec</a>
+          <a href="#" class="btn btn-line spot" onPointerMove="{{ spot }}">View on GitHub</a>
+        </div>
+      </div>
+      <div class="rv2" style="background: #0C0F0E; border-radius: 24px; overflow: hidden; box-shadow: 0 40px 80px -40px rgba(12,15,14,.6)">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #1F2724"><span style="width: 10px; height: 10px; border-radius: 50%; background: #34403B"></span><span style="width: 10px; height: 10px; border-radius: 50%; background: #34403B"></span><span style="width: 10px; height: 10px; border-radius: 50%; background: #34403B"></span><span class="mono" style="margin-left: 8px; font-size: 12px; color: #7E8A84">server.js</span><button type="button" style="margin-left: auto; background: transparent; border: 1px solid #34403B; color: #C5CEC9; border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer">Copy</button></div>
+        <pre class="mono" style="margin: 0; padding: 24px; font-size: 13.5px; line-height: 1.8; color: #C5CEC9; overflow-x: auto"><span style="color: #C79BFF">import</span> { paymentMiddleware } <span style="color: #C79BFF">from</span> <span style="color: #2BE38A">"@x402/express"</span>;
+
+<span style="color: #7E8A84">// $0.02 per call, settled with PayPal</span>
+app.<span style="color: #FFB020">use</span>(<span style="color: #FFB020">paymentMiddleware</span>({
+  <span style="color: #2BE38A">"GET /v1/quote"</span>: { accepts: { scheme: <span style="color: #2BE38A">"batch-settlement"</span>, network: <span style="color: #2BE38A">"paypal:sandbox"</span>,
+                                payTo: SELLER_ID, price: <span style="color: #2BE38A">"$0.02"</span> } },
+}, resourceServer));
+app.<span style="color: #FFB020">get</span>(<span style="color: #2BE38A">"/v1/quote"</span>, quoteHandler);</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap sx-flat" style="padding-top: 112px; padding-bottom: 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px">
+    <div class="card rv" style="padding: 30px; display: flex; flex-direction: column; gap: 12px">
+      <span style="width: 48px; height: 48px; border-radius: 14px; background: #DDF9E9; display: inline-flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#087A3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+      <strong style="font-size: 20px; letter-spacing: -0.02em">Never more than you approved</strong>
+      <span style="color: #4F5753; font-size: 16px">Every charge equals the exact sum of its paid calls.</span>
+    </div>
+    <div class="card rv2" style="padding: 30px; display: flex; flex-direction: column; gap: 12px">
+      <span style="width: 48px; height: 48px; border-radius: 14px; background: #ECE8FF; display: inline-flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A2799" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"></path><path d="M7 16V9M12 16V5M17 16v-4"></path></svg></span>
+      <strong style="font-size: 20px; letter-spacing: -0.02em">Limits on every level</strong>
+      <span style="color: #4F5753; font-size: 16px">Per call, per day and in total. Agents are refused before they go over.</span>
+    </div>
+    <div class="card rv3" style="padding: 30px; display: flex; flex-direction: column; gap: 12px">
+      <span style="width: 48px; height: 48px; border-radius: 14px; background: #FFF1D6; display: inline-flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6B4200" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"></path></svg></span>
+      <strong style="font-size: 20px; letter-spacing: -0.02em">Sandbox demo</strong>
+      <span style="color: #4F5753; font-size: 16px">Runs on PayPal's sandbox with test money. Nothing real moves.</span>
+    </div>
+  </section>
+
+  <section class="wrap rv" style="max-width: 880px; padding-top: 48px; padding-bottom: 96px; display: flex; flex-direction: column; gap: 22px">
+    <h2 class="h2">Questions</h2>
+    <div style="display: flex; flex-direction: column">
+      <details open="" style="border-bottom: 1px solid #E2E4DE; padding: 22px 0"><summary style="display: flex; justify-content: space-between; gap: 16px; font-size: 19px; font-weight: 700">Do I need crypto?<span class="chev" aria-hidden="true" style="font-size: 26px; line-height: 1; font-weight: 400">+</span></summary><p style="margin: 10px 0 0; color: #3A423E">No. No wallets, tokens or seed phrases. Payments settle in US dollars through PayPal.</p></details>
+      <details style="border-bottom: 1px solid #E2E4DE; padding: 22px 0"><summary style="display: flex; justify-content: space-between; gap: 16px; font-size: 19px; font-weight: 700">What does the agent need?<span class="chev" aria-hidden="true" style="font-size: 26px; line-height: 1; font-weight: 400">+</span></summary><p style="margin: 10px 0 0; color: #3A423E">An agent key from your console and the standard x402 fetch client with our PayPal plug-in. It handles the 402, signs and retries.</p></details>
+      <details style="border-bottom: 1px solid #E2E4DE; padding: 22px 0"><summary style="display: flex; justify-content: space-between; gap: 16px; font-size: 19px; font-weight: 700">How are fees kept low?<span class="chev" aria-hidden="true" style="font-size: 26px; line-height: 1; font-weight: 400">+</span></summary><p style="margin: 10px 0 0; color: #3A423E">Paid calls are batched into one PayPal charge at your auto-charge amount, or once a day.</p></details>
+      <details style="border-bottom: 1px solid #E2E4DE; padding: 22px 0"><summary style="display: flex; justify-content: space-between; gap: 16px; font-size: 19px; font-weight: 700">Can I stop it?<span class="chev" aria-hidden="true" style="font-size: 26px; line-height: 1; font-weight: 400">+</span></summary><p style="margin: 10px 0 0; color: #3A423E">Yes. Unlink here, or stop from your PayPal account. Agents are refused within a minute.</p></details>
+      <details style="border-bottom: 1px solid #E2E4DE; padding: 22px 0"><summary style="display: flex; justify-content: space-between; gap: 16px; font-size: 19px; font-weight: 700">Who receives the money?<span class="chev" aria-hidden="true" style="font-size: 26px; line-height: 1; font-weight: 400">+</span></summary><p style="margin: 10px 0 0; color: #3A423E">Each PayPal charge is made by PayPer402. Sellers see their share of every charge, after PayPal's fee.</p></details>
+      <details style="border-bottom: 1px solid #E2E4DE; padding: 22px 0"><summary style="display: flex; justify-content: space-between; gap: 16px; font-size: 19px; font-weight: 700">Who holds my PayPal details?<span class="chev" aria-hidden="true" style="font-size: 26px; line-height: 1; font-weight: 400">+</span></summary><p style="margin: 10px 0 0; color: #3A423E">PayPal does. We only keep a token for the agreement you approved.</p></details>
+    </div>
+  </section>
+
+  <section class="wrap" style="padding-bottom: 96px">
+    <div class="rv" style="background: #0C0F0E; color: #FFFFFF; border-radius: 36px; padding: clamp(40px, 6vw, 80px); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 26px; position: relative; overflow: hidden">
+      <div aria-hidden="true" style="position: absolute; inset: 0; background-image: radial-gradient(#26302C 1.2px, transparent 1.2px); background-size: 24px 24px; -webkit-mask-image: radial-gradient(60% 80% at 50% 100%, #000, transparent 70%); mask-image: radial-gradient(60% 80% at 50% 100%, #000, transparent 70%)"></div>
+      <h2 class="h2" style="position: relative; max-width: 760px">Let your agent pay. <span style="color: #2BE38A">You stay in&nbsp;control.</span></h2>
+      <a href="SignIn.dc.html" class="btn spec green spot" onPointerMove="{{ spot }}" style="min-height: 58px; padding: 0 32px; font-size: 17px"><span class="sheen" aria-hidden="true"></span>Try the live demo<svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+    </div>
+  </section>
+
+  <footer style="border-top: 1px solid #E2E4DE">
+    <div class="wrap" style="padding-top: 32px; padding-bottom: 40px; display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; font-size: 15px; color: #4F5753">
+      <span style="display: inline-flex; align-items: center; gap: 8px; color: #0C0F0E; font-weight: 800"><img src="/_blob/561a272e3f3c781b2b4d5555d2521dd1" alt="" aria-hidden="true" width="24" height="24" style="display: block; flex: none; object-fit: contain"><span>PayPer<span style="color: #087A3D">402</span></span></span>
+      <span>Settled with PayPal</span>
+      <a href="#" style="color: #0C0F0E; font-weight: 600">GitHub</a>
+      <a href="#spec" style="color: #0C0F0E; font-weight: 600">Spec</a>
+      <span style="margin-left: auto">A PayPal AI Hackathon project</span>
+      <a href="#top" class="btn btn-line spot topbtn" onPointerMove="{{ spot }}" style="min-height: 46px; padding: 0 20px; font-size: 15px">Back to top<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg></a>
+    </div>
+  </footer>
+  <a href="#top" class="totop" aria-label="Back to top"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg></a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":6000}}'>
+class Component extends DCLogic {
+  componentDidMount() { this.iv = setInterval(() => this.tick(), 700); }
+  componentWillUnmount() { clearInterval(this.iv); }
+  tick() {
+    const s = this.state || {};
+    const SVC = [['Market Quote API', 2], ['Page Summary API', 5], ['Translate API', 1], ['Market Quote API', 2], ['Page Summary API', 5]];
+    const i = s.i || 0;
+    let cents = s.cents ?? 420, charges = s.charges ?? 3, flash = false, last = s.last || ['Translate API', 1];
+    if (s.flash) { cents = 0; }
+    else {
+      last = SVC[i % SVC.length];
+      cents += last[1] * 2;
+      if (cents >= 500) { cents = 500; charges += 1; flash = true; }
+    }
+    let step = s.step || 0, st = (s.st || 0) + 1;
+    if (st >= 7) { step = (step + 1) % 4; st = 0; }
+    const h = ((s.h ?? 0) + 1) % 21;
+    this.setState({ i: i + 1, cents, charges, flash, last, step, st, h });
+  }
+  renderVals() {
+    const s = this.state || {};
+    const h = s.h ?? 2;
+    const DUR = [2, 2, 3, 2, 2, 2, 3, 2, 3];
+    let stage = 0, sub = 0, acc = 0;
+    for (let k = 0; k < DUR.length; k++) { if (h < acc + DUR[k]) { stage = k; sub = h - acc; break; } acc += DUR[k]; }
+    const CAPS = [
+      'Your agent calls a paid API.',
+      'The API answers 402: this call costs $0.02.',
+      'Jev checks the call serves the task. Code decides.',
+      'The agent signs a payment promise. No human click.',
+      'PayPer402 checks it against your limits and adds $0.02 to the meter.',
+      '200 OK. The agent gets its data. No money has moved yet.',
+      'Every paid call adds to the meter.',
+      'Near $5.00, PayPer402 charges your PayPal account once…',
+      '…and settles the seller\'s share. One fee for 143 calls.',
+    ];
+    const meterC = stage < 4 ? 0 : stage < 6 ? 2 : stage === 6 ? [124, 318, 498][sub] : stage === 7 ? 500 : 0;
+    const actor = ['agent', 'api', 'agent', 'agent', 'meter', 'api', 'meter', 'paypal', 'seller'][stage];
+    const glow = (n) => actor === n ? '0 0 0 8px rgba(43,227,138,.25), 0 18px 34px -14px rgba(12,15,14,.4)' : '0 12px 26px -16px rgba(12,15,14,.35)';
+
+    const step = s.step || 0;
+    const tab = s.tab || 'op';
+    const STEPS = [
+      ['01', 'Link PayPal once', "Approve on PayPal's page and set limits. That's your only click."],
+      ['02', 'Agent hits a paid API', 'The API answers 402 with a price, like $0.02.'],
+      ['03', 'It signs and retries', 'A signed payment promise. The call goes through.'],
+      ['04', 'One charge, later', 'Calls add up. We charge PayPal once near $5.00, or daily.'],
+    ];
+    const cents = s.cents ?? 420;
+    const filled = Math.round(cents / 20);
+    const on = 'background:#0C0F0E;color:#FFFFFF';
+    const off = 'background:transparent;color:#0C0F0E';
+    const last = s.last || ['Translate API', 1];
+    return {
+      spot: (e) => {
+        const t = e.currentTarget;
+        if (!t || !t.getBoundingClientRect) return;
+        const r = t.getBoundingClientRect();
+        t.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        t.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      },
+      pS0: stage === 0, pS1: stage === 1, pS2: stage === 3, pS3: stage === 4, pS4: stage === 5, pS5: stage === 6, pS6: stage === 7, pS7: stage === 8,
+      api402: stage === 1, api200: stage === 5, agentJev: stage === 2, agentSigned: stage === 3, agentData: stage === 5,
+      meterAdd: stage === 4, meterFull: stage === 7, youDebit: stage === 7, oneFee: stage === 8, sellerPaid: stage === 8,
+      agentGlow: glow('agent'), apiGlow: glow('api'), meterGlow: glow('meter'), youGlow: stage === 7 ? glow('paypal') : glow('x'), paypalGlow: glow('paypal'), sellerGlow: glow('seller'),
+      topOn: stage <= 6 ? 1 : 0, vOn: stage >= 7 ? 1 : 0, botLOn: stage >= 7 ? 1 : 0, botROn: stage >= 8 ? 1 : 0,
+      meterAmt: '$' + (meterC / 100).toFixed(2), meterW: (meterC / 5) + '%',
+      caps: CAPS.map((t, k) => ({ t, show: k === stage })),
+      segs7: CAPS.map((_, k) => ({ style: 'flex:1;height:4px;border-radius:4px;transition:background .45s;background:' + (k < stage ? '#0C0F0E' : k === stage ? '#2BE38A' : '#E2E4DE') })),
+      stepNo: '0' + (stage + 1),
+      pipeAria: 'How a paid call works, step ' + (stage + 1) + ' of 9: ' + CAPS[stage],
+      subs: ['Search API · Pro', 'News API · Team', 'Maps API · Growth', 'Translate API · Plus', 'Weather API · Pro', 'Sentiment API · Basic', 'OCR API · Team', 'Quotes API · Pro']
+        .map((n, k) => ({ n, p: ['$29/mo', '$49/mo', '$99/mo', '$19/mo', '$15/mo', '$25/mo', '$39/mo', '$29/mo'][k] }))
+        .concat([0, 1, 2, 3, 4, 5, 6, 7].map(k => ({ n: ['Search API · Pro', 'News API · Team', 'Maps API · Growth', 'Translate API · Plus', 'Weather API · Pro', 'Sentiment API · Basic', 'OCR API · Team', 'Quotes API · Pro'][k], p: ['$29/mo', '$49/mo', '$99/mo', '$19/mo', '$15/mo', '$25/mo', '$39/mo', '$29/mo'][k] }))),
+      steps: STEPS.map((x, k) => ({
+        n: x[0], title: x[1], text: x[2], active: k === step,
+        style: k === step ? 'background:#F4F5F1' : '',
+        numStyle: 'flex:none;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;transition:background .3s;' + (k === step ? 'background:#0C0F0E;color:#2BE38A' : 'background:#EEF0EB;color:#3A423E'),
+        pick: () => this.setState({ step: k, st: -7 }),
+      })),
+      isStep0: step === 0, isStep1: step === 1, isStep2: step === 2, isStep3: step === 3,
+      centsText: '$' + (cents / 100).toFixed(2),
+      segs: Array.from({ length: 25 }, (_, k) => ({ bg: k < filled ? '#2BE38A' : '#1F2724' })),
+      chargesText: String(s.charges ?? 3),
+      flash: !!s.flash, noFlash: !s.flash,
+      lastSvc: last[0] + ' ×2', lastP: '$' + (last[1] * 2 / 100).toFixed(2),
+      isOp: tab === 'op', isSeller: tab === 'seller',
+      opStyle: tab === 'op' ? on : off, sellerStyle: tab === 'seller' ? on : off,
+      pickOp: () => this.setState({ tab: 'op' }), pickSeller: () => this.setState({ tab: 'seller' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

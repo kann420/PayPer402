@@ -12,7 +12,7 @@ How to use this file:
 - The dates are targets. If a phase slips by more than a day, cut scope from Phase 4 polish or
   Stretch, never from Phase 6.
 
-**Current phase: Phase 4**
+**Current phase: Phase 5**
 
 - Phase 1 passed its final audit on 2026-10-15.
 - Phase 2 passed its audit on 2026-10-16, and its sandbox end-to-end run passed the same day.
@@ -21,6 +21,8 @@ How to use this file:
 - Phase 3.5 was inserted before Phase 4 on 2026-10-16, at the user's request. It passed its
   audit on 2026-10-16, and `npm run demo` passed on the real sandbox the same day, with a Jev check
   on every paid call.
+- Phase 4 passed its audit on 2026-10-17. Its Milestone 11 fixes passed audit on 2026-10-18, and
+  the browser flow passed on the real sandbox the same day.
 
 ## Overview
 
@@ -181,20 +183,58 @@ guards. The design is in `docs/spec/decision-layer.md`.
 
 Goal: a complete product a judge can use without a terminal.
 
-- [ ] `apps/web` (Next.js):
+- [x] **AG Studio spike (`spikes/ag-studio/`, 2026-10-17).** The Overview mockup was rebuilt with
+  Next 16 and AG Studio 3.0.0, with the theme taken from the design tokens and Claude behind a
+  server route. The findings are in the spike README.
+- [x] The UI design is frozen in `docs/design/` (canvas version `1792213018-362b`).
+- [x] Design spec `docs/spec/web-app.md` passes review. It passed in round 3 (draft 3) on
+  2026-10-17.
+- [x] Build spec `docs/phase-4/BUILD_SPEC.md` passes review. It passed in round 3 (draft 3) on
+  2026-10-17.
+- [x] Facilitator additions: a demo-operator admin route, usage counts and a block reason. Agent
+  prompt: a plan note before the first call, and an English spend explanation (the Phase 3
+  carry-over).
+- [x] `npm run dev:stack` runs the facilitator, the demo seller and the web app with one command.
+- [x] `apps/web` (Next.js). The build passed audit in round 2 (2026-10-17):
   - Landing page that explains PayPer402 in one screen.
-  - Operator onboarding: demo sign-in, link PayPal, set caps, create an agent key.
+  - Operator onboarding: demo sign-in (each visitor gets their own demo operator), link PayPal,
+    set caps, create an agent key.
   - Operator dashboard (AG Studio): spend per agent, per API and per day; settlements; wallet
     status, including revoked.
   - Seller dashboard (AG Studio): revenue per endpoint and settlement status.
   - AG Studio AI assistant through an Anthropic adapter. It calls a server route, and the key
     never reaches the browser.
   - A "run the demo agent" button, so judges can watch the agent spend live.
+- [x] Fixes after the second local run (build spec Milestone 11, 2026-10-18). The specs passed
+  review in round 2, and the build passed audit in round 1:
+  - several operators can share one PayPal payment token
+  - a link resumes from `VAULTED`
+  - "Check again" asks PayPal
+  - `dev:stack` keeps its session secret across restarts
+- [x] Fixes after the first local run (design spec draft 4, 2026-10-17), on the quick spec → build
+  path the user chose:
+  - a light/dark toggle on Live run
+  - the AG Studio licence banner in development
+  - assistant query reliability
+  - an English default task and Markdown in reports
+  - the hero pause control
+  - the PayPal logo in the hero
 - [ ] *Optional, parallel:* request the AG Studio 45-day trial between Nov 1 and 3 for a
-  watermark-free video. It is not required for judging.
+  watermark-free video. It is not required for judging, and it carries over.
 
 **Done when:** the whole flow works in a browser with a sandbox Personal account: link, cap, run
 the agent, see spend, revoke, and see the agent blocked.
+
+- **PASS on the real sandbox, 2026-10-18** (`npm run dev:stack`, Claude Sonnet 5.5), run in the
+  user's browser:
+  - **First operator (2026-10-17):** linked, capped and ran the agent. "Charge now" captured
+    exactly /usr/bin/bash.23 for its 8 paid calls, and the payment shows in both sandbox accounts.
+  - **Second demo operator (2026-10-18):** linked with the same sandbox Personal account and
+    shares its payment token. It ran research-bot for 2 paid calls (/usr/bin/bash.07).
+  - **Revocation:** after "Stop paying with PayPal", the health check revoked both operators in
+    the same second. The Overview showed "Stopped by payer" and the agent as blocked.
+  - **Not collected:** the second operator's 2 uncharged calls became `uncollectable` (/usr/bin/bash.07),
+    as the credit-risk design expects.
 
 ## Phase 5: Hosting + hardening (Nov 6–9)
 

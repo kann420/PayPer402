@@ -94,6 +94,10 @@ Out of scope (do not drift here):
      deleted (`404 TOKEN_NOT_FOUND`).
    - On either error, mark the operator's wallet as revoked, and answer every further request from
      their agents with `402`.
+   - PayPal keeps one agreement per payer and merchant. Linking the same PayPal account to a
+     second operator returns the same payment token (seen on sandbox, 2026-10-18). So a
+     revocation stops every operator holding that token, and an unlink deletes the token only
+     when no other operator still uses it.
    - Subscribe to the `VAULT.PAYMENT-TOKEN.DELETED` webhook, so revocation is noticed immediately
      and not at the next settlement.
 5. **Credit risk and the unsettled cap.**
@@ -167,6 +171,18 @@ Update this section as gates close.
     thresholds must come from the Phase 3.5 eval.
   - SDK timeouts apply per attempt, with no total budget. The findings are in the spike README
     and in `docs/spec/decision-layer.md`.
+- [x] **AG Studio spike (passed, 2026-10-17).** The app is in `spikes/ag-studio/`, and its README
+  holds the findings.
+  - Next 16.4.2 with `ag-studio` 3.0.0 works in one `'use client'` file and builds for
+    production. The client bundle is about 1.5 MB gzipped, so load Studio only on dashboard
+    routes.
+  - Theme params set from the design tokens get close to the mockup. Grid cells take React
+    renderers, which is how the status badges are drawn.
+  - The AI panel works in view mode only through a cast that the types do not allow
+    (`panels.view.right = ['ai']`). Use it with a read-only analyst agent. The fallback is edit
+    mode with only the AI panel.
+  - Claude runs behind a server route that replays Claude's own turns, so thinking blocks
+    survive. Each turn took 0.9 to 2.7 s on the spike's sample data.
 - [x] **AG Studio license (not a blocker).**
   - The sponsor answered on the hackathon Discord (Oct 2026): without a key AG Studio shows a
     watermark and a console error, and this is **not penalised in judging**.
@@ -198,7 +214,7 @@ Update this section as gates close.
   (`jev-1.14.0`). Load the `typesafe:typesafe-ai` skill and read the live TypeSafe docs before
   writing Jev code.
 - **Backend:** Express, SQLite via `better-sqlite3`, and `zod` for validation.
-- **Web:** Next.js with React.
+- **Web:** Next.js with React and Tailwind CSS v4.
 - **Dashboards:** `ag-studio` with `ag-studio-react` (v3). The key goes in through
   `<AgStudioProvider licenseKey={...}>`.
   - AG Studio API reference: `https://www.ag-grid.com/studio/llms.txt`. Fetch it before writing
@@ -238,7 +254,13 @@ docs/                    binding spec, architecture, demo script
 - **Secrets** live in environment variables. Never commit `.env*` (except `.env.example`), keys,
   `*.db`, vault state files, or sandbox account credentials.
 - **Trademark.** The product is PayPer402. Mention "PayPal" only factually (for example "settled
-  with PayPal"). Do not use the PayPal logo or imitate PayPal's visual identity.
+  with PayPal").
+  - The official PayPal logo may appear only to show PayPal as the payment rail, for example the
+    settlement step in the landing hero (user decision, 2026-10-17).
+  - Use it unaltered: no recolouring, cropping or distortion, and with clear space.
+  - Never use it as PayPer402's own branding, never in a way that implies PayPal endorses the
+    product, and never imitate PayPal's visual identity (its colours, wordmark styling or
+    buttons).
 - **No dead weight.** Do not add chain-specific code, unused dependencies, or features outside
   the scope above. If something seems worth adding, ask first.
 - Before declaring a change done: run typecheck and tests, and run the pre-commit checks listed

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Onboarding · Return from PayPal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#F4F5F1}
+a{color:#087A3D;text-decoration:none}a:hover{color:#05592C}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+@keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}
+@keyframes pg-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.rcard{animation:pg-in .6s cubic-bezier(.2,.8,.2,1) backwards}
+.rcard:nth-child(2){animation-delay:.08s}.rcard:nth-child(3){animation-delay:.16s}.rcard:nth-child(4){animation-delay:.24s}
+@media (prefers-reduced-motion: reduce){.rcard{animation:none}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F5F1; color: #0C0F0E; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.5">
+  <div style="background: #FFF4DB; color: #6B4200; font-size: 13px; text-align: center; padding: 7px 16px; border-bottom: 1px solid #F0DDAE"><span class="mono" style="font-weight: 600">SANDBOX</span> · Sandbox: test money only. No real charges.</div>
+  <header style="max-width: 1180px; margin: 0 auto; padding: 18px 24px; display: flex; align-items: center; gap: 10px">
+    <img src="/_blob/561a272e3f3c781b2b4d5555d2521dd1" alt="" aria-hidden="true" width="32" height="32" style="display: block; flex: none; object-fit: contain">
+    <strong style="font-size: 18px">PayPer<span class="mono" style="color: #087A3D">402</span></strong>
+    <span style="margin-left: auto; color: #5B635F; font-size: 14px">Back from PayPal</span>
+  </header>
+  <main style="max-width: 1180px; margin: 0 auto; padding: 8px 24px 56px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 28px; letter-spacing: -0.02em">Return page · four outcomes</h1>
+      <p style="margin: 0; color: #4F5753">PayPal sends the browser back to <span class="mono" style="background: #FFFFFF; border: 1px solid #E2E4DE; border-radius: 6px; padding: 1px 6px">/link/complete?status=…</span>. Each status gets its own state.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px">
+
+      <section class="rcard" style="background: #FFFFFF; border: 1px solid #E2E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+        <span class="mono" style="align-self: flex-start; font-size: 11px; color: #5B635F; background: #F4F5F1; border-radius: 6px; padding: 3px 8px">?status=active</span>
+        <span style="width: 48px; height: 48px; border-radius: 14px; background: #2BE38A; display: inline-flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0C0F0E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg></span>
+        <strong style="font-size: 19px">You're linked.</strong>
+        <p style="margin: 0; color: #3A423E; font-size: 14px">PayPal approved the agreement for <span class="mono">al***@example.com</span>.</p>
+        <a href="OnbLimits.dc.html" style="margin-top: auto; align-self: flex-start; background: #0C0F0E; color: #FFFFFF; border-radius: 10px; padding: 11px 16px; font-weight: 600; font-size: 14px">Continue to limits →</a>
+      </section>
+
+      <section class="rcard" style="background: #FFFFFF; border: 1px solid #E2E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+        <span class="mono" style="align-self: flex-start; font-size: 11px; color: #5B635F; background: #F4F5F1; border-radius: 6px; padding: 3px 8px">?status=waiting_for_approval</span>
+        <span style="width: 48px; height: 48px; border-radius: 14px; background: #ECE8FF; color: #3A2799; display: inline-flex; align-items: center; justify-content: center"><svg class="spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg></span>
+        <strong style="font-size: 19px">Still waiting for PayPal</strong>
+        <p style="margin: 0; color: #3A423E; font-size: 14px">PayPal hasn't confirmed the approval yet. This page checks again by itself.</p>
+        <button type="button" style="margin-top: auto; align-self: flex-start; background: #FFFFFF; color: #0C0F0E; border: 1.5px solid #CDD1C9; border-radius: 10px; padding: 10px 16px; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer">Check again</button>
+      </section>
+
+      <section class="rcard" style="background: #FFFFFF; border: 1px solid #E2E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+        <span class="mono" style="align-self: flex-start; font-size: 11px; color: #5B635F; background: #F4F5F1; border-radius: 6px; padding: 3px 8px">?status=link_failed</span>
+        <span style="width: 48px; height: 48px; border-radius: 14px; background: #FDE7E4; color: #8A1C12; display: inline-flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg></span>
+        <strong style="font-size: 19px">Link not completed</strong>
+        <p style="margin: 0; color: #3A423E; font-size: 14px">You cancelled on PayPal. Or: the approval link expired after 3 days. Or: we couldn't collect the <span class="mono">$3.12</span> left from before you stopped.</p>
+        <a href="OnbLink.dc.html" style="margin-top: auto; align-self: flex-start; background: #0C0F0E; color: #FFFFFF; border-radius: 10px; padding: 11px 16px; font-weight: 600; font-size: 14px">Try again</a>
+      </section>
+
+      <section class="rcard" style="background: #FFFFFF; border: 1px solid #E2E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+        <span class="mono" style="align-self: flex-start; font-size: 11px; color: #5B635F; background: #F4F5F1; border-radius: 6px; padding: 3px 8px">?status=unknown</span>
+        <span style="width: 48px; height: 48px; border-radius: 14px; background: #EEF0EB; color: #3A423E; display: inline-flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/><path d="M4 4l16 16"/></svg></span>
+        <strong style="font-size: 19px">Link already used</strong>
+        <p style="margin: 0; color: #3A423E; font-size: 14px">This link was already used. Go to your dashboard.</p>
+        <a href="Overview.dc.html" style="margin-top: auto; align-self: flex-start; background: #FFFFFF; color: #0C0F0E; border: 1.5px solid #0C0F0E; border-radius: 10px; padding: 10px 16px; font-weight: 600; font-size: 14px">Go to dashboard</a>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

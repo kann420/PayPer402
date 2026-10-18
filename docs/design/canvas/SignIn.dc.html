@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PayPer402 · Choose a demo account</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#F4F5F1}
+a{color:#087A3D;text-decoration:none}a:hover{color:#05592C}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.pick:hover{border-color:#0C0F0E;box-shadow:0 24px 48px -20px rgba(12,15,14,.25);transform:translateY(-4px)}
+.pick{transition:box-shadow .3s cubic-bezier(.2,.8,.2,1),border-color .3s,transform .3s cubic-bezier(.2,.8,.2,1) !important}
+@keyframes pg-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes pg-fade{from{opacity:0}to{opacity:1}}
+h1,h1 + p{animation:pg-in .6s .08s cubic-bezier(.2,.8,.2,1) backwards}
+.pick{animation:pg-in .7s .2s cubic-bezier(.2,.8,.2,1) backwards}
+.pick + .pick{animation-delay:.3s}
+@media (prefers-reduced-motion: reduce){h1,.pick,h1 + p{animation:none !important}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F5F1; color: #0C0F0E; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; display: flex; flex-direction: column">
+  <div style="background: #FFF4DB; color: #6B4200; font-size: 13px; text-align: center; padding: 7px 16px; border-bottom: 1px solid #F0DDAE">
+    <span class="mono" style="font-weight: 600">SANDBOX</span> · Sandbox: test money only. No real charges.
+  </div>
+  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 16px; gap: 36px">
+    <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #0C0F0E; font-weight: 700; font-size: 20px">
+      <span style="display: inline-flex">
+        <img src="/_blob/561a272e3f3c781b2b4d5555d2521dd1" alt="" aria-hidden="true" width="38" height="38" style="display: block; flex: none; object-fit: contain">
+      </span>
+      PayPer<span class="mono" style="color: #087A3D">402</span>
+    </a>
+    <div style="text-align: center; display: flex; flex-direction: column; gap: 8px">
+      <h1 style="margin: 0; font-size: 34px; letter-spacing: -0.02em">Choose a demo account</h1>
+      <p style="margin: 0; color: #4F5753; font-size: 17px">No passwords. Pick a side and look around.</p>
+    </div>
+    <div style="width: 100%; max-width: 820px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px">
+      <a href="OnbLink.dc.html" class="pick" style="background: #FFFFFF; border: 1.5px solid #E2E4DE; border-radius: 20px; padding: 30px; display: flex; flex-direction: column; gap: 18px; color: #0C0F0E; transition: box-shadow .15s, border-color .15s">
+        <span style="width: 52px; height: 52px; border-radius: 14px; background: #DDF9E9; display: inline-flex; align-items: center; justify-content: center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#087A3D" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M2 13v2M22 13v2"/></svg>
+        </span>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <strong style="font-size: 22px">Operator demo</strong>
+          <span style="color: #4F5753; font-size: 16px">I run AI agents</span>
+        </div>
+        <div class="mono" style="font-size: 13px; color: #5B635F; border-top: 1px solid #E2E4DE; padding-top: 14px">Northwind Research · operator@example.com</div>
+        <span style="align-self: flex-start; background: #0C0F0E; color: #FFFFFF; padding: 12px 18px; border-radius: 10px; font-weight: 600; font-size: 15px">Continue as operator →</span>
+      </a>
+      <a href="SellerOverview.dc.html" class="pick" style="background: #FFFFFF; border: 1.5px solid #E2E4DE; border-radius: 20px; padding: 30px; display: flex; flex-direction: column; gap: 18px; color: #0C0F0E; transition: box-shadow .15s, border-color .15s">
+        <span style="width: 52px; height: 52px; border-radius: 14px; background: #ECE8FF; display: inline-flex; align-items: center; justify-content: center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5B3FD9" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13 6l-2 12"/></svg>
+        </span>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <strong style="font-size: 22px">Seller demo</strong>
+          <span style="color: #4F5753; font-size: 16px">I sell an API</span>
+        </div>
+        <div class="mono" style="font-size: 13px; color: #5B635F; border-top: 1px solid #E2E4DE; padding-top: 14px">Acme Data · 4 priced endpoints</div>
+        <span style="align-self: flex-start; background: #FFFFFF; color: #0C0F0E; border: 1.5px solid #0C0F0E; padding: 11px 18px; border-radius: 10px; font-weight: 600; font-size: 15px">Continue as seller →</span>
+      </a>
+    </div>
+    <p style="margin: 0; color: #5B635F; font-size: 14px">Demo accounts on PayPal sandbox.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Operator · PayPal charges</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#F4F5F1}
+@keyframes pg-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pg-fade{from{opacity:0}to{opacity:1}}
+@keyframes pg-nav{from{background:transparent;transform:translateX(-6px)}to{transform:none}}
+@keyframes pg-row{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pg-dlg{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+main > div:first-child{animation:pg-fade .4s ease-out backwards}
+main > div:nth-child(2) > *{animation:pg-in .65s cubic-bezier(.2,.8,.2,1) backwards}
+main > div:nth-child(2) > *:nth-child(2){animation-delay:.08s}main > div:nth-child(2) > *:nth-child(n+3){animation-delay:.16s}
+tbody tr{animation:pg-row .5s cubic-bezier(.2,.8,.2,1) backwards}tbody tr:nth-child(1){animation-delay:.2s}tbody tr:nth-child(2){animation-delay:.25s}tbody tr:nth-child(3){animation-delay:.3s}tbody tr:nth-child(4){animation-delay:.35s}tbody tr:nth-child(n+5){animation-delay:.4s}
+.nav a[aria-current="page"]{animation:pg-nav .45s cubic-bezier(.2,.8,.2,1) backwards}
+.pg-dialog{animation:pg-dlg .3s cubic-bezier(.2,.8,.2,1)}.pg-toast{animation:pg-in .35s cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion: reduce){main *,main > div,.nav a,.pg-dialog,.pg-toast{animation:none !important}}
+a{color:#087A3D;text-decoration:none}a:hover{color:#05592C}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.tnum{font-variant-numeric:tabular-nums}
+.nav a{color:#B4BEB8;display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;font-size:15px}
+.nav a:hover{background:#1A201E;color:#FFFFFF}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;font-weight:500;color:#5B635F;font-size:12px;text-transform:uppercase;letter-spacing:.05em;padding:12px 16px;border-bottom:1px solid #E2E4DE;white-space:nowrap}
+.tbl td{padding:14px 16px;border-bottom:1px solid #EEF0EB;white-space:nowrap}
+.tbl tr:hover td{background:#FAFBF8}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F5F1; color: #0C0F0E; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45; display: flex; flex-direction: column">
+  <div style="background: #FFF4DB; color: #6B4200; font-size: 13px; text-align: center; padding: 6px 16px; border-bottom: 1px solid #F0DDAE"><span class="mono" style="font-weight: 600">SANDBOX</span> · Sandbox: test money only. No real charges.</div>
+  <div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+    <aside style="flex: 1 1 232px; background: #0C0F0E; color: #EEF2EF; padding: 20px 14px; display: flex; flex-direction: column; gap: 22px; box-sizing: border-box">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+        <img src="/_blob/561a272e3f3c781b2b4d5555d2521dd1" alt="" aria-hidden="true" width="30" height="30" style="display: block; flex: none; object-fit: contain">
+        <strong style="font-size: 17px">PayPer<span class="mono" style="color: #2BE38A">402</span></strong>
+      </div>
+      <nav class="nav" aria-label="Operator" style="display: flex; flex-direction: column; gap: 2px">
+        <a href="Overview.dc.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</a>
+        <a href="Agents.dc.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01"/></svg>Agents</a>
+        <a href="LiveRun.dc.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>Live run</a>
+        <a href="Charges.dc.html" aria-current="page" style="background: #1F2724; color: #FFFFFF; font-weight: 600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2BE38A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>PayPal charges</a>
+        <a href="Settings.dc.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Settings</a>
+      </nav>
+      <div style="margin-top: auto; border: 1px solid #26302C; border-radius: 12px; padding: 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px"><span style="color: #9AA59F">Northwind Research</span><span class="mono" style="color: #C5CEC9">operator@example.com</span></div>
+    </aside>
+
+    <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 16px 28px; border-bottom: 1px solid #E2E4DE; background: #FFFFFF">
+        <h1 style="margin: 0; font-size: 22px">PayPal charges</h1>
+        <div style="margin-left: auto; display: flex; gap: 10px; align-items: center">
+          <select aria-label="Demo account" style="height: 40px; border: 1px solid #CDD1C9; border-radius: 10px; padding: 0 10px; font: inherit; font-size: 14px; background: #FFFFFF"><option>Operator demo · Northwind</option><option>Seller demo · Acme Data</option></select>
+          <button type="button" style="height: 40px; border: 1px solid #CDD1C9; border-radius: 10px; padding: 0 14px; background: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Ask AI</button>
+        </div>
+      </div>
+
+      <div style="padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px">
+        <div style="background: #0C0F0E; color: #EEF2EF; border-radius: 14px; padding: 18px 20px; display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2BE38A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span style="font-size: 16px; flex: 1 1 280px">Every charge equals the exact sum of the calls it covers.</span>
+          <div style="display: flex; flex-direction: column; gap: 6px; flex: 0 1 300px">
+            <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Not yet charged</span><span class="mono tnum"><strong style="color: #2BE38A">{{ nyc }}</strong> / $5.00</span></div>
+            <div style="height: 6px; background: #26302C; border-radius: 99px; overflow: hidden"><div style="height: 100%; width: {{ nycPct }}; background: #2BE38A; transition: width .5s"></div></div>
+            <span class="mono" style="font-size: 12px; color: #9AA59F">auto-charge near $5.00</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start">
+            <button type="button" onClick="{{ openCharge }}" disabled="{{ chargeDisabled }}" style="{{ chargeBtnStyle }}">Charge now</button>
+            <sc-if value="{{ chargeDisabled }}" hint-placeholder-val="{{ true }}"><span style="font-size: 12px; color: #9AA59F">A charge is already running</span></sc-if>
+          </div>
+        </div>
+
+        <div style="background: #FFFFFF; border: 1px solid #E2E4DE; border-radius: 14px; overflow-x: auto">
+          <table class="tbl">
+            <thead><tr><th>Date</th><th>Trigger</th><th style="text-align: right">Amount</th><th style="text-align: right">Calls</th><th>Status</th><th>PayPal order</th><th></th></tr></thead>
+            <tbody>
+              <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+                <tr>
+                  <td class="mono tnum">{{ r.date }}</td>
+                  <td style="font-size: 13px">{{ r.trigger }}</td>
+                  <td class="mono tnum" style="text-align: right; font-weight: 600">{{ r.amount }}</td><td class="mono tnum" style="text-align: right">{{ r.calls }}</td>
+                  <td><span style="{{ r.badgeStyle }}"><span aria-hidden="true">{{ r.glyph }}</span>{{ r.status }}</span></td>
+                  <td class="mono" style="font-size: 12px; color: #5B635F">{{ r.order }}</td>
+                  <td style="text-align: right"><a href="{{ r.href }}" style="font-weight: 600; font-size: 14px">View</a></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: #5B635F">
+          <span><strong style="color: #0C0F0E">Threshold</strong> · unpaid usage neared Auto-charge at</span>
+          <span><strong style="color: #0C0F0E">Daily</strong> · once a day, after midnight UTC</span>
+          <span><strong style="color: #0C0F0E">Manual</strong> · you pressed Charge now</span>
+          <span><strong style="color: #0C0F0E">Unlink</strong> · final charge when you unlinked</span>
+          <span><strong style="color: #0C0F0E">Re-link</strong> · earlier usage collected when you re-linked</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <sc-if value="{{ dialogOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 80; background: rgba(12,15,14,.45); display: flex; align-items: center; justify-content: center; padding: 16px">
+      <div role="dialog" aria-modal="true" aria-labelledby="cn-title" class="pg-dialog" style="width: 100%; max-width: 420px; background: #FFFFFF; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 30px 80px -20px rgba(12,15,14,.5)">
+        <strong id="cn-title" style="font-size: 18px">Charge $3.12 to your PayPal account now?</strong>
+        <p style="margin: 0; font-size: 14px; color: #3A423E">This covers 104 paid calls that are not yet charged.</p>
+        <div style="display: flex; gap: 10px; justify-content: flex-end">
+          <button type="button" onClick="{{ closeCharge }}" style="height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #CDD1C9; background: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Cancel</button>
+          <button type="button" onClick="{{ confirmCharge }}" style="height: 44px; padding: 0 18px; border-radius: 10px; border: 0; background: #0C0F0E; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Charge $3.12</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div role="status" class="pg-toast" style="position: fixed; right: 24px; bottom: 24px; z-index: 81; background: #0C0F0E; color: #FFFFFF; border-radius: 12px; padding: 12px 16px; display: flex; gap: 10px; align-items: center; box-shadow: 0 16px 36px -12px rgba(12,15,14,.5)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2BE38A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>PayPal charge started</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"chargeRunning":{"editor":"boolean","default":true},"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  componentWillUnmount() { clearTimeout(this.tt); }
+  renderVals() {
+    const st = this.state || {};
+    const b = (bg, fg) => 'display:inline-flex;gap:6px;align-items:center;font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px;background:' + bg + ';color:' + fg;
+    const S = {
+      charging: ['Charging', '↻', b('#FFF1D6', '#6B4200'), 'ChargeDetailCharging.dc.html'],
+      completed: ['Completed', '✓', b('#DDF9E9', '#05592C'), 'ChargeDetail.dc.html'],
+      failed: ['Failed', '✕', b('#FDE7E4', '#8A1C12'), 'ChargeDetailDeclined.dc.html'],
+      review: ['Needs review', '?', b('#ECE8FF', '#3A2799'), 'ChargeDetailReview.dc.html'],
+    };
+    const data = [
+      ['Nov 2, 10:40', 'Threshold', '$4.93', '141', 'charging', '5RC10927QS884512A'],
+      ['Nov 2, 09:14', 'Threshold', '$5.00', '143', 'completed', '8XK41922LM530214T'],
+      ['Nov 1, 23:59', 'Daily', '$3.27', '98', 'completed', '3HV07745RB118926C'],
+      ['Nov 1, 14:20', 'Threshold', '$4.96', '150', 'failed', '9TB22018KX661930D'],
+      ['Oct 31, 16:02', 'Threshold', '$5.00', '151', 'completed', '6TQ58210WD472203M'],
+      ['Oct 30, 11:05', 'Manual', '$1.48', '52', 'review', '1MD77302HC045518E'],
+      ['Oct 29, 09:30', 'Re-link', '$3.12', '104', 'completed', '4JN61145PF290377G'],
+      ['Oct 28, 18:00', 'Unlink', '$0.86', '31', 'completed', '7WE90288LA513064B'],
+    ];
+    const charging = !!st.charging;
+    const running = (this.props.chargeRunning ?? true) !== false && this.props.chargeRunning !== 'false';
+    const chargeDisabled = charging || running;
+    if (!running) data[0] = ['Nov 2, 10:40', 'Threshold', '$4.93', '141', 'completed', '5RC10927QS884512A'];
+    const rows = data.map(d => { const s = S[d[4]]; return { date: d[0], trigger: d[1], amount: d[2], calls: d[3], status: s[0], glyph: s[1], badgeStyle: s[2], href: s[3], order: d[5] }; });
+    if (charging) rows.unshift({ date: 'Nov 2, now', trigger: 'Manual', amount: '$3.12', calls: '104', status: 'Charging', glyph: '↻', badgeStyle: S.charging[2], href: S.charging[3], order: 'pending' });
+    return {
+      rows,
+      nyc: charging ? '$0.00' : '$3.12', nycPct: charging ? '0%' : '62.4%',
+      chargeDisabled,
+      chargeBtnStyle: 'height:40px;padding:0 16px;border-radius:10px;font:inherit;font-size:14px;font-weight:700;' + (chargeDisabled ? 'border:1px solid #34403B;background:transparent;color:#7E8A84;cursor:not-allowed' : 'border:0;background:#2BE38A;color:#0C0F0E;cursor:pointer'),
+      openCharge: () => { if (!chargeDisabled) this.setState({ dialog: true }); },
+      closeCharge: () => this.setState({ dialog: false }),
+      confirmCharge: () => { this.setState({ dialog: false, charging: true, toast: true }); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: false }), 3200); },
+      dialogOpen: !!st.dialog, toast: !!st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>
