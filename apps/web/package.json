@@ -1,0 +1,36 @@
+{
+  "name": "@payper402/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PayPer402 web app: landing, operator and seller consoles, AG Studio dashboards and the live agent run.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "dev:stack": "tsx --env-file-if-exists=../../.env scripts/dev-stack.ts",
+    "typecheck": "next typegen && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
+    "@payper402/agent": "*",
+    "@payper402/demo-seller": "*",
+    "@payper402/facilitator": "*",
+    "@payper402/scheme-paypal": "*",
+    "ag-grid-react": "~36.2.0",
+    "ag-studio": "3.0.0",
+    "ag-studio-react": "3.0.0",
+    "next": "16.4.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "server-only": "0.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "4.3.3"
+  }
+}

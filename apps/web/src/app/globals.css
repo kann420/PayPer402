@@ -1,0 +1,569 @@
+@import 'tailwindcss';
+
+/* Design tokens from the DesignSystem board (design spec §8.1). */
+@theme {
+  --font-sans: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-ink-950: #0c0f0e;
+  --color-ink-900: #2c332f;
+  --color-ink-800: #3a423e;
+  --color-ink-700: #4f5753;
+  --color-ink-500: #5b635f;
+  --color-ink-400: #9aa59f;
+  --color-ink-300: #b4beb8;
+  --color-ink-200: #c5cec9;
+  --color-ground-50: #f4f5f1;
+  --color-ground-100: #eef0eb;
+  --color-line-200: #e2e4de;
+  --color-line-250: #d6d9d2;
+  --color-line-300: #cdd1c9;
+  --color-line-400: #b9beb6;
+  --color-meter-100: #ddf9e9;
+  --color-meter-400: #2be38a;
+  --color-meter-600: #0e9f5c;
+  --color-meter-700: #087a3d;
+  --color-meter-800: #05592c;
+  --color-violet-100: #ece8ff;
+  --color-violet-300: #c9beff;
+  --color-violet-500: #7c5cff;
+  --color-violet-800: #3a2799;
+  --color-amber-100: #fff1d6;
+  --color-amber-300: #f0c978;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-800: #6b4200;
+  --color-sandbox-bg: #fff4db;
+  --color-sandbox-line: #f0ddae;
+  --color-red-100: #fde7e4;
+  --color-red-300: #f3b2a9;
+  --color-red-700: #b42318;
+  --color-red-800: #8a1c12;
+  --color-side-hover: #1a201e;
+  --color-side-active: #1f2724;
+  --color-side-line: #26302c;
+
+  /* Dark boards: landing and live run. */
+  --color-dark-bg: #0b0e0d;
+  --color-dark-surface: #111614;
+  --color-dark-raised: #161c19;
+  --color-dark-line: #222a27;
+  --color-dark-grid: #1c2320;
+  --color-dark-text: #eef2ef;
+  --color-dark-muted: #9aa59f;
+  --color-dark-amber: #ffb020;
+  --color-dark-violet: #c7b8ff;
+  --color-dark-danger: #ff9c8f;
+  --color-dark-danger-fill: #3a120d;
+
+  /* Code samples. */
+  --color-code-keyword: #c79bff;
+  --color-code-string: #2be38a;
+  --color-code-call: #ffb020;
+  --color-code-comment: #7e8a84;
+
+  --radius-card: 14px;
+  --radius-panel: 16px;
+  --radius-dialog: 18px;
+  --radius-control: 10px;
+
+  --shadow-toast: 0 16px 36px -12px rgba(12, 15, 14, 0.5);
+  --shadow-dialog: 0 30px 80px -20px rgba(12, 15, 14, 0.5);
+  --shadow-drawer: -30px 0 80px -30px rgba(12, 15, 14, 0.5);
+
+  --animate-spin-slow: spin 1s linear infinite;
+}
+
+@layer base {
+  html,
+  body {
+    margin: 0;
+    background: var(--color-ground-50);
+    color: var(--color-ink-950);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  a {
+    color: var(--color-meter-700);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--color-meter-800);
+  }
+  :focus-visible {
+    outline: 2px solid #2be38a;
+    outline-offset: 1px;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  /* Browser defaults the boards rely on (Tailwind's preflight resets them). */
+  h1,
+  h2,
+  h3 {
+    font-weight: 700;
+  }
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Board table style (`.tbl`). */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.tbl th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--color-ink-500);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-line-200);
+  white-space: nowrap;
+}
+.tbl td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--color-ground-100);
+  white-space: nowrap;
+}
+
+/* Sidebar navigation (board `.nav`). */
+.side-nav a {
+  color: var(--color-ink-300);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.side-nav a:hover {
+  background: var(--color-side-hover);
+  color: #ffffff;
+}
+.side-nav a[aria-current='page'] {
+  background: var(--color-side-active);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* AG Studio grid headers: small uppercase labels, as in the design system table. */
+.studio-host .ag-header-cell-text {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Motion from the boards; all of it is off under reduced motion (design spec §16). */
+@keyframes pg-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pg-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pg-dlg {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pg-tst {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pg-drawer {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes pg-side {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pg-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes pg-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes pg-row {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.pg-enter > * {
+  animation: pg-in 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.pg-enter > *:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.pg-enter > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.pg-enter > *:nth-child(4) {
+  animation-delay: 0.18s;
+}
+.pg-enter > *:nth-child(5) {
+  animation-delay: 0.24s;
+}
+.pg-enter > *:nth-child(n + 6) {
+  animation-delay: 0.3s;
+}
+.pg-fade {
+  animation: pg-fade 0.4s ease-out backwards;
+}
+.pg-dialog {
+  animation: pg-dlg 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pg-toast {
+  animation: pg-tst 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pg-drawer {
+  animation: pg-drawer 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pg-fill {
+  transform-origin: left;
+  animation: pg-fill 1s 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.pg-pulse {
+  animation: pg-pulse 1.4s ease-in-out infinite;
+}
+.pg-row {
+  animation: pg-row 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.pg-spin {
+  animation: spin 1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-enter > *,
+  .pg-fade,
+  .pg-dialog,
+  .pg-toast,
+  .pg-drawer,
+  .pg-fill,
+  .pg-pulse,
+  .pg-row,
+  .pg-spin,
+  .side-nav a {
+    animation: none !important;
+  }
+}
+
+.sr-only-focusable:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* Loading skeleton (States board). */
+@keyframes shimmer {
+  from {
+    background-position: -400px 0;
+  }
+  to {
+    background-position: 400px 0;
+  }
+}
+.sk {
+  display: block;
+  background: linear-gradient(90deg, #eef0eb 0, #f7f8f5 50%, #eef0eb 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk {
+    animation: none;
+  }
+}
+
+/* The console shell (design spec §9.1): sidebar, then main; below 900 px a horizontal nav bar. */
+.console-body {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+}
+.console-side {
+  flex: 0 0 232px;
+  box-sizing: border-box;
+}
+.console-main {
+  flex: 1 1 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 899px) {
+  .console-body {
+    flex-direction: column;
+  }
+  .console-side {
+    flex: none;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    overflow-x: auto;
+  }
+  .console-side .side-nav {
+    flex-direction: row;
+  }
+  /* The account card shrinks to its "Start over" button, so it stays reachable on a phone. */
+  .console-side .console-account {
+    flex: none;
+    margin: 0 0 0 auto;
+    padding: 0;
+    border: 0;
+    white-space: nowrap;
+  }
+  .console-side .console-account > span {
+    display: none;
+  }
+  .console-side .console-account > button {
+    margin-top: 0;
+  }
+}
+
+/*
+ * Live run theme (design spec §10.10): light by default, the boards' dark look as an option. The
+ * page's wrapper has `.run-theme`; the root layout's pre-paint script and the toggle set
+ * `data-run-theme="dark"` on <html>, so the choice applies before the first paint.
+ */
+.run-theme {
+  --run-bg: #f4f5f1;
+  --run-text: #0c0f0e;
+  --run-muted: #5b635f;
+  --run-surface: #ffffff;
+  --run-line: #e2e4de;
+  --run-field-bg: #ffffff;
+  --run-field-line: #cdd1c9;
+  --run-strip-bg: #fff4db;
+  --run-strip-line: #f0ddae;
+  --run-strip-text: #6b4200;
+  --run-topbar-bg: #ffffff;
+  --run-topbar-line: #e2e4de;
+  --run-row-text: #2c332f;
+  --run-time: #5b635f;
+  --run-service: #4f5753;
+  --run-spent: #087a3d;
+  --run-bar-bg: #eef0eb;
+  --run-bar: #0e9f5c;
+  --run-link: #087a3d;
+  --run-button-bg: #0c0f0e;
+  --run-button-text: #ffffff;
+  --run-dashed: #cdd1c9;
+  --run-chip-bg: #eef0eb;
+  --run-chip-line: #e2e4de;
+  --run-chip-text: #3a423e;
+  --run-price-chip-bg: #fff1d6;
+  --run-price-chip-line: #f0c978;
+  --run-price-chip-text: #6b4200;
+  --run-paid-chip-bg: #ddf9e9;
+  --run-paid-chip-text: #05592c;
+  --run-jev-bg: #ece8ff;
+  --run-jev-line: #c9beff;
+  --run-jev-text: #3a2799;
+  --run-amber-text: #6b4200;
+  --run-danger-text: #8a1c12;
+  --run-danger-bg: #fde7e4;
+  --run-danger-line: #f3b2a9;
+  --run-end-bg: #fde7e4;
+  --run-end-line: #f3b2a9;
+  --run-end-text: #8a1c12;
+  --run-end-action-bg: #b42318;
+  --run-end-action-text: #ffffff;
+  --run-thinking-ink: #4f5753;
+  --run-thinking-box: #eef0eb;
+  --run-price-ink: #6b4200;
+  --run-price-box: #fff1d6;
+  --run-decided-ink: #05592c;
+  --run-decided-box: #ddf9e9;
+  --run-skip-ink: #3a423e;
+  --run-skip-box: #eef0eb;
+  --run-paid-ink: #05592c;
+  --run-paid-box: #ddf9e9;
+  --run-refused-ink: #8a1c12;
+  --run-refused-box: #fde7e4;
+  --run-problem-ink: #6b4200;
+  --run-problem-box: #fff1d6;
+  --run-result-ink: #0c0f0e;
+  --run-result-box: #eef0eb;
+  --run-row-bg: #ffffff;
+  --run-row-line: #e2e4de;
+  --run-row-paid-line: #9fe3bf;
+  --run-row-problem-line: #f0c978;
+  --run-row-refused-line: #f3b2a9;
+  --run-row-refused-bg: #fff8f7;
+  --run-pill-running-bg: #ddf9e9;
+  --run-pill-running-text: #05592c;
+  --run-pill-bad-bg: #fde7e4;
+  --run-pill-bad-text: #8a1c12;
+  --run-pill-done-bg: #eef0eb;
+  --run-pill-done-text: #3a423e;
+  --run-report-bg: #ffffff;
+  --run-report-line: #e2e4de;
+  background: var(--run-bg);
+  color: var(--run-text);
+}
+
+html[data-run-theme='dark'] .run-theme {
+  --run-bg: #0b0e0d;
+  --run-text: #eef2ef;
+  --run-muted: #9aa59f;
+  --run-surface: #111614;
+  --run-line: #222a27;
+  --run-field-bg: #0b0e0d;
+  --run-field-line: #34403b;
+  --run-strip-bg: #1a1405;
+  --run-strip-line: #3a2d0b;
+  --run-strip-text: #ffd27a;
+  --run-topbar-bg: transparent;
+  --run-topbar-line: #1c2320;
+  --run-row-text: #dde3df;
+  --run-time: #6b7a72;
+  --run-service: #c5cec9;
+  --run-spent: #2be38a;
+  --run-bar-bg: #1c2320;
+  --run-bar: #2be38a;
+  --run-link: #2be38a;
+  --run-button-bg: #2be38a;
+  --run-button-text: #0b0e0d;
+  --run-dashed: #34403b;
+  --run-chip-bg: #1c2320;
+  --run-chip-line: #222a27;
+  --run-chip-text: #b4beb8;
+  --run-price-chip-bg: #2a1f05;
+  --run-price-chip-line: #5a430c;
+  --run-price-chip-text: #ffb020;
+  --run-paid-chip-bg: #2be38a;
+  --run-paid-chip-text: #0b0e0d;
+  --run-jev-bg: #1c2320;
+  --run-jev-line: #222a27;
+  --run-jev-text: #c7b8ff;
+  --run-amber-text: #ffb020;
+  --run-danger-text: #ff9c8f;
+  --run-danger-bg: #2a0f0c;
+  --run-danger-line: #7a2a20;
+  --run-end-bg: #b42318;
+  --run-end-line: #b42318;
+  --run-end-text: #ffffff;
+  --run-end-action-bg: #ffffff;
+  --run-end-action-text: #b42318;
+  --run-thinking-ink: #c5cec9;
+  --run-thinking-box: #1c2320;
+  --run-price-ink: #ffb020;
+  --run-price-box: #2a1f05;
+  --run-decided-ink: #2be38a;
+  --run-decided-box: #0c2a1b;
+  --run-skip-ink: #b4beb8;
+  --run-skip-box: #1c2320;
+  --run-paid-ink: #2be38a;
+  --run-paid-box: #0c2a1b;
+  --run-refused-ink: #ff9c8f;
+  --run-refused-box: #3a120d;
+  --run-problem-ink: #ffb020;
+  --run-problem-box: #2a1f05;
+  --run-result-ink: #ffffff;
+  --run-result-box: #26302c;
+  --run-row-bg: #111614;
+  --run-row-line: #222a27;
+  --run-row-paid-line: #165a37;
+  --run-row-problem-line: #5a430c;
+  --run-row-refused-line: #7a2a20;
+  --run-row-refused-bg: #2a0f0c;
+  --run-pill-running-bg: #0c2a1b;
+  --run-pill-running-text: #2be38a;
+  --run-pill-bad-bg: #3a120d;
+  --run-pill-bad-text: #ff9c8f;
+  --run-pill-done-bg: #26302c;
+  --run-pill-done-text: #eef2ef;
+  --run-report-bg: #f4f5f1;
+  --run-report-line: transparent;
+}
+
+/* The safe Markdown subset (lib/markdown-lite.ts). */
+.md {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.md p,
+.md ul,
+.md ol {
+  margin: 0;
+}
+.md ul,
+.md ol {
+  padding-left: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.md ul {
+  list-style: disc;
+}
+.md ol {
+  list-style: decimal;
+}
+.md-code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(127, 140, 133, 0.16);
+}
