@@ -10,6 +10,7 @@ import { errorHandler, notFoundHandler, requestId } from './http';
 import { createJobs, type Jobs } from './jobs';
 import type { Logger } from './logger';
 import type { PayPalGateway } from './paypal';
+import { adminRoutes } from './routes/admin';
 import { agentRoutes } from './routes/agents';
 import { DEFAULT_KEEPALIVE_MS, eventsHandler } from './routes/events';
 import { operatorRoutes } from './routes/operator';
@@ -133,6 +134,8 @@ export function createApp(deps: AppDeps, services: Services = createServices(dep
   app.use('/v1/settlements', operator, reads.settlements);
   app.use('/v1/seller', seller, sellerRoutes(ctx));
   app.get('/v1/events', either, eventsHandler(ctx, deps.sseKeepaliveMs ?? DEFAULT_KEEPALIVE_MS));
+  // Mounted only when the admin key is configured; otherwise the path is a plain 404.
+  if (config.adminApiKey !== undefined) app.use('/v1/admin', adminRoutes(ctx, config.adminApiKey));
 
   app.use(notFoundHandler);
   app.use(errorHandler(deps.logger));

@@ -12,11 +12,12 @@ import { conflict } from '../http';
 import { errorFields, errorMessage } from '../logger';
 import { BackgroundWork, readWallet, type ServiceContext } from './context';
 import {
-  deleteVaultToken,
+  afterRevoke,
   emitWallet,
   finishUnlink,
   relinkOutcomeTx,
-  revokeWalletTx,
+  releaseVaultToken,
+  revokeTokenHoldersTx,
   unlinkDeclinedTx,
 } from './wallet-state';
 
@@ -508,6 +509,7 @@ export class SettlementService {
 
         let walletChanged = false;
         let sealedToDelete: string | undefined;
+        let revoked: string[] = [];
         const relink = s.trigger === 'relink';
         // For relink, the wallet is touched only when rule (b) matches (design spec §5).
         const clearRetry = () =>
@@ -546,18 +548,23 @@ export class SettlementService {
           }
         } else if (r.kind === 'payer_stopped') {
           db.prepare(`UPDATE commitments SET state = 'uncollectable' WHERE settlement_id = ? AND state = 'settling'`).run(s.id);
+          if (!relink) {
+            db.prepare(`UPDATE commitments SET state = 'uncollectable' WHERE operator_id = ? AND state = 'unsettled'`).run(
+              s.operator_id,
+            );
+          }
+          // The token is gone for every holder (§5.1). A relink's own wallet is
+          // `waiting_for_approval`, so the revocation skips it and §8 step 3 decides it below.
+          revoked = revokeTokenHoldersTx(db, s.vault_id_hash, now);
           if (relink) {
             const result = relinkOutcomeTx(db, s.operator_id, s.vault_id_hash, 'failed', now);
             walletChanged = result.changed;
             sealedToDelete = result.sealedToDelete;
           } else {
-            db.prepare(`UPDATE commitments SET state = 'uncollectable' WHERE operator_id = ? AND state = 'unsettled'`).run(
-              s.operator_id,
-            );
-            walletChanged = revokeWalletTx(db, s.operator_id, now, s.vault_id_hash);
+            walletChanged = revoked.includes(s.operator_id);
           }
         }
-        return { walletChanged, sealedToDelete };
+        return { walletChanged, sealedToDelete, revoked };
       })
       .immediate();
     if (!outcome) return false;
@@ -572,19 +579,12 @@ export class SettlementService {
         details: { operatorId: s.operator_id, trigger: s.trigger, reason: r.reason, ...(r.kind === 'needs_review' ? { code: r.code } : {}) },
       });
     }
-    if (outcome.walletChanged) {
-      if (r.kind === 'payer_stopped' && s.trigger !== 'relink') {
-        recordAudit(db, this.ctx.logger, now, {
-          actorType: 'paypal',
-          action: 'wallet.revoked',
-          resourceType: 'wallet',
-          resourceId: s.operator_id,
-          details: { via: 'charge_error', settlementId: s.id },
-        });
-      }
-      emitWallet(this.ctx, s.operator_id);
+    for (const operatorId of outcome.revoked) {
+      afterRevoke(this.ctx, operatorId, now, { via: 'charge_error', settlementId: s.id });
     }
-    if (outcome.sealedToDelete) await deleteVaultToken(this.ctx, outcome.sealedToDelete, s.operator_id);
+    // A revoked charging wallet already got its event above.
+    if (outcome.walletChanged && !outcome.revoked.includes(s.operator_id)) emitWallet(this.ctx, s.operator_id);
+    if (outcome.sealedToDelete) await releaseVaultToken(this.ctx, outcome.sealedToDelete, s.operator_id);
     if (r.kind === 'completed' && s.trigger === 'unlink') await finishUnlink(this.ctx, s.operator_id, s.vault_id_hash);
     return true;
   }

@@ -34,9 +34,37 @@ export function revokeWalletTx(db: Db, operatorId: string, now: number, vaultIdH
   return true;
 }
 
+/**
+ * Revokes every holder of a payment token (design spec §5.1, §12): each wallet with that hash in
+ * `active` or `unlinking`, through rule (d). A holder in `waiting_for_approval` is left to its
+ * relink settlement. Returns the revoked operator ids; call `afterRevoke` for each once the
+ * transaction has committed. A null hash revokes nothing.
+ */
+export function revokeTokenHoldersTx(db: Db, vaultIdHash: string | null, now: number): string[] {
+  if (vaultIdHash === null) return [];
+  const holders = db
+    .prepare(`SELECT operator_id FROM wallets WHERE vault_id_hash = ? AND status IN ('active', 'unlinking') ORDER BY operator_id`)
+    .all(vaultIdHash) as { operator_id: string }[];
+  return holders
+    .map((row) => row.operator_id)
+    .filter((operatorId) => revokeWalletTx(db, operatorId, now, vaultIdHash));
+}
+
+/** Audit and `wallet.updated` for one revoked wallet, after the revoking transaction commits. */
+export function afterRevoke(ctx: ServiceContext, operatorId: string, now: number, details: Record<string, unknown>): void {
+  recordAudit(ctx.db, ctx.logger, now, {
+    actorType: 'paypal',
+    action: 'wallet.revoked',
+    resourceType: 'wallet',
+    resourceId: operatorId,
+    details,
+  });
+  emitWallet(ctx, operatorId);
+}
+
 export interface RelinkOutcomeResult {
   changed: boolean;
-  /** Sealed payment token to delete at PayPal after the commit (failed outcome only). */
+  /** Sealed payment token to release (rule (e)) after the commit (failed outcome only). */
   sealedToDelete?: string;
 }
 
@@ -84,36 +112,81 @@ export function unlinkDeclinedTx(db: Db, operatorId: string, now: number): boole
   );
 }
 
-/** Deletes a payment token at PayPal, best effort. "Not found" counts as deleted. */
-export async function deleteVaultToken(ctx: ServiceContext, sealed: string, operatorId: string): Promise<boolean> {
+function auditDeleteFailed(ctx: ServiceContext, operatorId: string, err: unknown): void {
+  ctx.logger.warn('Could not delete a payment token at PayPal', { operatorId, ...errorFields(err) });
+  recordAudit(ctx.db, ctx.logger, ctx.clock(), {
+    actorType: 'system',
+    action: 'wallet.token_delete_failed',
+    resourceType: 'wallet',
+    resourceId: operatorId,
+    details: { ...errorFields(err) },
+  });
+}
+
+/**
+ * Deletes a payment token at PayPal, best effort. "Not found" counts as deleted. The only code
+ * that calls PayPal's DELETE; reach it through `releaseVaultId` / `releaseVaultToken`.
+ */
+async function deleteVaultToken(ctx: ServiceContext, vaultId: string, operatorId: string): Promise<boolean> {
   try {
-    await ctx.paypal.deletePaymentToken(ctx.box.open(sealed));
+    await ctx.paypal.deletePaymentToken(vaultId);
     return true;
   } catch (err) {
     if (err instanceof PayPalApiError && err.httpStatus === 404) return true;
-    ctx.logger.warn('Could not delete a payment token at PayPal', { operatorId, ...errorFields(err) });
-    recordAudit(ctx.db, ctx.logger, ctx.clock(), {
-      actorType: 'system',
-      action: 'wallet.token_delete_failed',
-      resourceType: 'wallet',
-      resourceId: operatorId,
-      details: { ...errorFields(err) },
-    });
+    auditDeleteFailed(ctx, operatorId, err);
     return false;
   }
 }
 
 /**
- * Unlink step 4 (design spec §10): delete the payment token at PayPal, clear the vault columns,
- * then with rule (c) set `not_linked`. A wallet revoked meanwhile keeps `stopped_by_payer`, but
- * its vault columns are still cleared. Only the token `vaultIdHash` is touched, so a newer link
- * is never affected.
+ * Releases a payment token for `operatorId`, rule (e) (design spec §5.1). Another live holder
+ * (a different wallet with the same hash in `active`, `unlinking` or `waiting_for_approval`)
+ * keeps the token at PayPal: the DELETE is skipped and `wallet.token_kept_shared` is audited.
+ * Otherwise the token is deleted. The caller clears its own vault columns.
+ */
+export async function releaseVaultId(ctx: ServiceContext, vaultId: string, operatorId: string): Promise<void> {
+  const shared = ctx.db
+    .prepare(
+      `SELECT 1 FROM wallets WHERE operator_id <> ? AND vault_id_hash = ?
+         AND status IN ('active', 'unlinking', 'waiting_for_approval') LIMIT 1`,
+    )
+    .get(operatorId, ctx.box.lookupHash(vaultId));
+  if (shared === undefined) {
+    await deleteVaultToken(ctx, vaultId, operatorId);
+    return;
+  }
+  // No token id and no hash in the details.
+  recordAudit(ctx.db, ctx.logger, ctx.clock(), {
+    actorType: 'system',
+    action: 'wallet.token_kept_shared',
+    resourceType: 'wallet',
+    resourceId: operatorId,
+  });
+}
+
+/** `releaseVaultId` for a sealed column value. A value that cannot be opened is audited like a failed delete. */
+export async function releaseVaultToken(ctx: ServiceContext, sealed: string, operatorId: string): Promise<void> {
+  let vaultId: string;
+  try {
+    vaultId = ctx.box.open(sealed);
+  } catch (err) {
+    auditDeleteFailed(ctx, operatorId, err);
+    return;
+  }
+  await releaseVaultId(ctx, vaultId, operatorId);
+}
+
+/**
+ * Unlink step 4 (design spec §10): release the payment token (rule (e)), clear the vault
+ * columns, then with rule (c) set `not_linked`. A wallet revoked meanwhile keeps
+ * `stopped_by_payer`, but its vault columns are still cleared. Only the token `vaultIdHash` is
+ * touched, so a newer link is never affected.
  */
 export async function finishUnlink(ctx: ServiceContext, operatorId: string, vaultIdHash: string | null): Promise<void> {
   const wallet = readWallet(ctx.db, operatorId);
   if (!wallet || (wallet.status !== 'unlinking' && wallet.status !== 'stopped_by_payer')) return;
   if (wallet.vault_id_hash !== vaultIdHash) return;
-  if (wallet.vault_id_sealed) await deleteVaultToken(ctx, wallet.vault_id_sealed, operatorId);
+  if (wallet.vault_id_sealed) await releaseVaultToken(ctx, wallet.vault_id_sealed, operatorId);
   const now = ctx.clock();
   const statusChanged = ctx.db.transaction(() => {
     ctx.db

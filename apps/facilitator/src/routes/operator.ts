@@ -9,7 +9,7 @@ import { conflict, handler, HttpError, notFound, parse } from '../http';
 import type { ServiceContext } from '../services/context';
 import type { WalletService } from '../services/wallets';
 import { snapshotSync } from '../stores';
-import { capsView, settlementView, walletView } from '../views';
+import { capsView, operatorBlockReason, settlementView, walletView } from '../views';
 
 const cents = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 
@@ -60,13 +60,41 @@ export function operatorRoutes(ctx: ServiceContext, wallets: WalletService): Rou
     const last = ctx.db
       .prepare('SELECT * FROM settlements WHERE operator_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1')
       .get(operatorId) as SettlementRow | undefined;
+    const counts = ctx.db
+      .prepare(
+        `SELECT
+           COALESCE(SUM(CASE WHEN state IN ('unsettled', 'settling') THEN 1 ELSE 0 END), 0) AS notYetChargedCalls,
+           COALESCE(SUM(CASE WHEN state = 'unsettled' THEN amount ELSE 0 END), 0) AS chargeable,
+           COALESCE(SUM(CASE WHEN state = 'unsettled' THEN 1 ELSE 0 END), 0) AS chargeableCalls,
+           COALESCE(SUM(CASE WHEN state = 'uncollectable' THEN amount ELSE 0 END), 0) AS notCollected,
+           COALESCE(SUM(CASE WHEN state = 'uncollectable' THEN 1 ELSE 0 END), 0) AS notCollectedCalls
+         FROM commitments WHERE operator_id = ?`,
+      )
+      .get(operatorId) as {
+      notYetChargedCalls: number;
+      chargeable: number;
+      chargeableCalls: number;
+      notCollected: number;
+      notCollectedCalls: number;
+    };
+    const wallet = wallets.get(operatorId);
     res.json({
       operator: { id: operator.id, name: operator.name, email: operator.email, createdAt: operator.created_at },
-      wallet: walletView(ctx.db, wallets.get(operatorId)),
+      wallet: walletView(ctx.db, wallet),
       caps: capsView(operator),
-      usage: { spentToday: snapshot.spentToday, notYetCharged: snapshot.unsettled, spentTotal: snapshot.spentTotal },
+      usage: {
+        spentToday: snapshot.spentToday,
+        notYetCharged: snapshot.unsettled,
+        spentTotal: snapshot.spentTotal,
+        notYetChargedCalls: counts.notYetChargedCalls,
+        chargeable: counts.chargeable,
+        chargeableCalls: counts.chargeableCalls,
+        notCollected: counts.notCollected,
+        notCollectedCalls: counts.notCollectedCalls,
+      },
       activeAgents,
       lastSettlement: last ? settlementView(last) : null,
+      blockReason: operatorBlockReason(ctx.db, operator, wallet.status, now),
     });
   });
 

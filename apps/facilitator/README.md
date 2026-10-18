@@ -8,7 +8,7 @@ The service behind the `batch-settlement` / `paypal:sandbox` x402 binding. It:
 - charges the linked wallet in batches (Orders v2 with the vault id), never more than the sum of
   the recorded commitments
 - notices revocation through charge errors, the `VAULT.PAYMENT-TOKEN.DELETED` webhook and a
-  wallet health check
+  wallet health check, for every operator that holds the revoked payment token
 - serves operator and seller read APIs and a live event stream (SSE)
 
 It runs on the **PayPal sandbox only**; the PayPal client refuses the live host. Behaviour, data
@@ -59,6 +59,26 @@ either for `/v1/events`. A seller's `@x402/express` app points an `HTTPFacilitat
 Jobs (one tick every `SETTLEMENT_TICK_SECONDS`, and once at start-up for crash recovery): link
 expiry, settlement retries and capture polling, threshold and daily triggers, and wallet health
 checks (at most 10 per tick).
+
+## Shared payment tokens
+
+PayPal keeps one agreement per payer and merchant. A payer who links the same PayPal account to
+a second operator gets the **same** payment token back, so several wallets can hold one token
+(`wallets.vault_id_hash` is not unique since migration 2). See design spec §5.1.
+
+- Each operator keeps its own caps, ledger, settlements and wallet status; every settlement is
+  its own PayPal order against the shared token.
+- **Revocation stops every holder.** A `VAULT.PAYMENT-TOKEN.DELETED` webhook, a health check that
+  finds the token gone, or a revocation-class charge error sets every holder in `active` or
+  `unlinking` to `stopped_by_payer`. A holder in `waiting_for_approval` is decided by its relink
+  settlement instead.
+- **Releasing instead of deleting.** Unlink, a link restart, a failed relink and a lost race
+  delete the token at PayPal only when no other wallet in `active`, `unlinking` or
+  `waiting_for_approval` holds it. Otherwise the token stays at PayPal, only this operator's
+  columns are cleared, and the audit log records `wallet.token_kept_shared`.
+- Finishing a link also works when the setup token is already `VAULTED` (an earlier attempt's
+  result was lost). A non-transient failure of the payment-token step ends the link as
+  `link_failed` with `link_error: 'payment_token_failed'`, so "Try again" restarts it.
 
 ## Sandbox end-to-end script
 
@@ -113,7 +133,8 @@ UPDATE commitments SET state = 'settled' WHERE settlement_id = :id AND state = '
 UPDATE wallets SET status = 'active', linked_at = :now, updated_at = :now
   WHERE operator_id = :op AND status = 'waiting_for_approval'
     AND vault_id_hash = (SELECT vault_id_hash FROM settlements WHERE id = :id);
--- trigger = 'unlink' only (also delete the payment token in PayPal, or let the payer remove it).
+-- trigger = 'unlink' only (also delete the payment token in PayPal, or let the payer remove it,
+-- unless another wallet in active, unlinking or waiting_for_approval has the same vault_id_hash).
 -- Clear the charged token whether the wallet is still unlinking or was revoked meanwhile...
 UPDATE wallets SET vault_id_sealed = NULL, vault_id_hash = NULL, paypal_customer_id = NULL,
   payer_email_masked = NULL, updated_at = :now
@@ -141,7 +162,7 @@ UPDATE commitments SET state = 'unsettled', settlement_id = NULL WHERE settlemen
 -- so a later relink collects them:
 -- UPDATE commitments SET state = 'uncollectable' WHERE settlement_id = :id AND state = 'settling';
 -- trigger = 'relink' instead: the debt stays uncollectable and the new link fails
--- (also delete the new payment token in PayPal).
+-- (also delete the new payment token in PayPal, unless another live wallet holds the same hash).
 -- UPDATE commitments SET state = 'uncollectable' WHERE settlement_id = :id AND state = 'settling';
 -- UPDATE wallets SET status = 'link_failed', link_error = 'relink_settlement_failed', vault_id_sealed = NULL,
 --   vault_id_hash = NULL, paypal_customer_id = NULL, payer_email_masked = NULL, updated_at = :now
@@ -168,3 +189,7 @@ covered. Manual changes emit no live events; dashboards pick them up on their ne
 - If deleting a payment token at PayPal fails (other than "not found") during unlink or a failed
   relink, the facilitator still clears its own copy and writes `wallet.token_delete_failed` to the
   audit log; the token must then be removed at PayPal by hand or by the payer.
+- **Accepted race on shared tokens:** the "another live holder?" check and the PayPal DELETE are
+  one PayPal round trip apart. If the same payer finishes a link on another operator inside that
+  window, that operator's next charge or health check finds the token gone and revokes it; it can
+  link again.

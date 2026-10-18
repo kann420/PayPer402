@@ -261,7 +261,7 @@ describe('read APIs', () => {
     const overview = await h.api('GET', '/v1/seller', { key: seller.key });
     expect(overview.body).toEqual({
       seller: { id: seller.sellerId, name: 'Test seller', createdAt: T0 },
-      usage: { revenueToday: 37, revenueTotal: 57, pending: 7, callsToday: 2, uniqueAgentsToday: 2 },
+      usage: { revenueToday: 37, revenueTotal: 57, pending: 7, pendingCalls: 1, callsToday: 2, uniqueAgentsToday: 2 },
     });
 
     const calls = await h.api('GET', '/v1/seller/commitments', { key: seller.key });

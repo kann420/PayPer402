@@ -86,7 +86,7 @@ describe('config', () => {
 describe('migrations', () => {
   it('creates the schema from empty, including the pending-settlement index', () => {
     const db = openDatabase(':memory:');
-    expect(runMigrations(db)).toBe(1);
+    expect(runMigrations(db)).toBe(2);
     const tables = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[]).map((r) => r.name);
     for (const table of ['operators', 'sellers', 'api_keys', 'wallets', 'agents', 'commitments', 'settlements', 'settlement_items', 'webhook_events', 'audit_log', 'schema_migrations']) {
       expect(tables).toContain(table);
@@ -108,8 +108,8 @@ describe('migrations', () => {
   it('is idempotent', () => {
     const db = openDatabase(':memory:');
     runMigrations(db);
-    expect(runMigrations(db)).toBe(1);
-    expect((db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get() as { n: number }).n).toBe(1);
+    expect(runMigrations(db)).toBe(2);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get() as { n: number }).n).toBe(2);
   });
 
   it('refuses a database newer than the code', () => {
@@ -123,9 +123,45 @@ describe('migrations', () => {
   it('rolls back a failing migration together with its version row', () => {
     const db = openDatabase(':memory:');
     runMigrations(db);
-    expect(() => runMigrations(db, [...MIGRATIONS, { version: 2, sql: 'CREATE TABLE t (x); SELECT * FROM missing;' }])).toThrow();
-    expect(schemaVersion(db)).toBe(1);
+    expect(() => runMigrations(db, [...MIGRATIONS, { version: 3, sql: 'CREATE TABLE t (x); SELECT * FROM missing;' }])).toThrow();
+    expect(schemaVersion(db)).toBe(2);
     expect(db.prepare(`SELECT name FROM sqlite_master WHERE name = 't'`).get()).toBeUndefined();
+  });
+
+  it('migration 2 upgrades a version-1 database: every wallet row unchanged, vault_id_hash no longer unique', () => {
+    const db = openDatabase(':memory:');
+    expect(runMigrations(db, MIGRATIONS.filter((m) => m.version === 1))).toBe(1);
+    const insertOperator = db.prepare(`INSERT INTO operators VALUES (?, 'n', NULL, 1, 1, 1, NULL, 0)`);
+    for (const id of ['op_linked', 'op_waiting', 'op_none', 'op_other']) insertOperator.run(id);
+    const insertWallet = db.prepare(
+      `INSERT INTO wallets (operator_id, status, link_state, setup_token_id, link_started_at, link_error, vault_id_sealed,
+         vault_id_hash, paypal_customer_id, payer_email_masked, linked_at, stopped_at, last_checked_at, charge_retry_after, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    insertWallet.run('op_linked', 'active', null, null, 10, null, 'v1.a.b.c', 'hash-a', 'CUST-1', 'bu***@example.com', 11, null, 12, 13, 14);
+    insertWallet.run('op_waiting', 'waiting_for_approval', 'state-w', 'ST-1', 20, null, null, null, null, null, null, null, null, null, 21);
+    insertWallet.run('op_none', 'not_linked', null, null, null, 'cancelled', null, null, null, null, null, null, null, null, 31);
+    // Version 1 refuses a shared hash.
+    expect(() => insertWallet.run('op_other', 'active', null, null, null, null, 'v1.d.e.f', 'hash-a', null, null, null, null, null, null, 1)).toThrow(/UNIQUE/);
+    const columns = db.prepare('PRAGMA table_info(wallets)').all();
+    const before = db.prepare('SELECT * FROM wallets ORDER BY operator_id').all();
+
+    expect(runMigrations(db)).toBe(2);
+    expect(db.prepare('SELECT * FROM wallets ORDER BY operator_id').all()).toEqual(before);
+    expect(db.prepare('PRAGMA table_info(wallets)').all()).toEqual(columns);
+    expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+    expect(db.prepare(`SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'wallets_vault_id_hash'`).get()).toBeTruthy();
+
+    // Two wallets can now share a hash; link_state stays unique; the CHECK and the FK still hold.
+    insertWallet.run('op_other', 'active', null, null, null, null, 'v1.d.e.f', 'hash-a', null, null, null, null, null, null, 1);
+    expect((db.prepare(`SELECT COUNT(*) AS n FROM wallets WHERE vault_id_hash = 'hash-a'`).get() as { n: number }).n).toBe(2);
+    expect(() => db.prepare(`UPDATE wallets SET link_state = 'state-w' WHERE operator_id = 'op_none'`).run()).toThrow(/UNIQUE/);
+    expect(() => db.prepare(`UPDATE wallets SET status = 'bogus' WHERE operator_id = 'op_none'`).run()).toThrow(/CHECK/);
+    expect(() => insertWallet.run('op_missing', 'not_linked', null, null, null, null, null, null, null, null, null, null, null, null, 1)).toThrow(/FOREIGN KEY/);
+
+    // A newer database is still refused.
+    db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (3, 0)').run();
+    expect(() => runMigrations(db)).toThrow(DatabaseTooNewError);
   });
 });
 

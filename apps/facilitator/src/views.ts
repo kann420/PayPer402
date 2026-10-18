@@ -148,7 +148,7 @@ export function agentView(row: AgentRow): AgentView {
   };
 }
 
-/** Agent with usage and the derived `blocked` flag (design spec §7.2). */
+/** Agent with usage, the derived `blocked` flag and its `blockReason` (design spec §7.2). */
 export function agentWithUsage(db: Db, row: AgentRow, operator: OperatorRow, walletStatus: string, now: number) {
   const dayStart = utcDayStart(now);
   const usage = db
@@ -166,12 +166,26 @@ export function agentWithUsage(db: Db, row: AgentRow, operator: OperatorRow, wal
     callsToday: number;
     lastCallAt: number | null;
   };
-  return { ...agentView(row), ...usage, blocked: operatorBlocked(db, operator, walletStatus, now) };
+  const blockReason = operatorBlockReason(db, operator, walletStatus, now);
+  return { ...agentView(row), ...usage, blocked: blockReason !== null, blockReason };
+}
+
+/** Why the operator's agents are refused right now (web-app spec §5.3), or null. */
+export type BlockReason = 'wallet_not_active' | 'daily' | 'unsettled' | 'total';
+
+/**
+ * The block reason: `wallet_not_active` when the wallet is not active, otherwise the cap a
+ * max-priced call would exceed. `perCall` cannot occur (the amount checked is the per-call cap
+ * itself) and maps to null. Neither this nor `blocked` looks at an agent's own status.
+ */
+export function operatorBlockReason(db: Db, operator: OperatorRow, walletStatus: string, now: number): BlockReason | null {
+  if (walletStatus !== 'active') return 'wallet_not_active';
+  const caps = capsOf(operator);
+  const cap = exceededCap(caps.perCall, snapshotSync(db, operator.id, now), caps);
+  return cap === 'daily' || cap === 'unsettled' || cap === 'total' ? cap : null;
 }
 
 /** True when the wallet is not active or a max-priced call would exceed a cap right now. */
 export function operatorBlocked(db: Db, operator: OperatorRow, walletStatus: string, now: number): boolean {
-  if (walletStatus !== 'active') return true;
-  const caps = capsOf(operator);
-  return exceededCap(caps.perCall, snapshotSync(db, operator.id, now), caps) !== undefined;
+  return operatorBlockReason(db, operator, walletStatus, now) !== null;
 }

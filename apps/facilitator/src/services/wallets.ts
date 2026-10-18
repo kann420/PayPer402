@@ -6,7 +6,15 @@ import { conflict } from '../http';
 import { errorFields } from '../logger';
 import { ensureWallet, maskEmail, readWallet, type ServiceContext } from './context';
 import type { SettlementService } from './settlements';
-import { CLEAR_VAULT_COLUMNS, deleteVaultToken, emitWallet, finishUnlink, revokeWalletTx } from './wallet-state';
+import {
+  CLEAR_VAULT_COLUMNS,
+  afterRevoke,
+  emitWallet,
+  finishUnlink,
+  releaseVaultId,
+  releaseVaultToken,
+  revokeTokenHoldersTx,
+} from './wallet-state';
 
 export const LINK_DESCRIPTION =
   'PayPer402: your AI agents pay per API call; charges are batched to this PayPal account.';
@@ -51,7 +59,7 @@ export class WalletService {
     const { ctx } = this;
     const wallet = this.get(operatorId);
     this.assertCanLink(wallet);
-    if (wallet.vault_id_sealed) await deleteVaultToken(ctx, wallet.vault_id_sealed, operatorId);
+    if (wallet.vault_id_sealed) await releaseVaultToken(ctx, wallet.vault_id_sealed, operatorId);
 
     const state = randomToken(16);
     const query = `state=${encodeURIComponent(state)}`;
@@ -108,13 +116,67 @@ export class WalletService {
     if (expectedState !== undefined && expectedState !== state) return wallet;
 
     const setupToken = await ctx.paypal.getSetupToken(setupTokenId);
-    if (setupToken.status !== 'APPROVED') return this.get(operatorId);
-    const paymentToken: PaymentTokenResult = await ctx.paypal.createPaymentToken(setupTokenId, state);
-    const vaultIdHash = ctx.box.lookupHash(paymentToken.id);
-    const sealed = ctx.box.seal(paymentToken.id);
+    // `VAULTED`: an earlier attempt created the payment token but its result was never stored.
+    // The same request id returns that token (design spec §8 step 2).
+    if (setupToken.status !== 'APPROVED' && setupToken.status !== 'VAULTED') return this.get(operatorId);
+    let paymentToken: PaymentTokenResult;
+    try {
+      paymentToken = await ctx.paypal.createPaymentToken(setupTokenId, state);
+    } catch (err) {
+      // Transient: the wallet stays as it is and a later refresh repeats the request (through
+      // `VAULTED` if PayPal did process it). Any other failure ends the link.
+      if (classifyPayPalError(err) === 'transient') throw err;
+      return this.failLink(operatorId, state, setupTokenId, err);
+    }
 
     const now = ctx.clock();
-    const result = ctx.db
+    let vaultIdHash: string;
+    let result: { won: false } | { won: true; settlement?: SettlementRow };
+    try {
+      vaultIdHash = ctx.box.lookupHash(paymentToken.id);
+      const sealed = ctx.box.seal(paymentToken.id);
+      result = this.storeTx(operatorId, state, setupTokenId, paymentToken, vaultIdHash, sealed, now);
+    } catch (err) {
+      return this.failLink(operatorId, state, setupTokenId, err, paymentToken.id);
+    }
+
+    if (!result.won) {
+      const current = this.get(operatorId);
+      if (current.vault_id_hash !== vaultIdHash) await releaseVaultId(ctx, paymentToken.id, operatorId);
+      return current;
+    }
+    recordAudit(ctx.db, ctx.logger, now, {
+      actorType: 'operator',
+      actorId: operatorId,
+      action: 'wallet.payment_token_saved',
+      resourceType: 'wallet',
+      resourceId: operatorId,
+      details: { relink: result.settlement !== undefined },
+    });
+    if (result.settlement) {
+      this.settlements.afterClaim(result.settlement);
+      await this.settlements.attempt(result.settlement.id);
+    }
+    emitWallet(ctx, operatorId);
+    return this.get(operatorId);
+  }
+
+  /**
+   * Stores a created payment token with compare-and-set rule (a), then activates the wallet or
+   * claims its relink settlement, in one IMMEDIATE transaction. The token may already be held by
+   * other wallets (design spec §5.1).
+   */
+  private storeTx(
+    operatorId: string,
+    state: string,
+    setupTokenId: string,
+    paymentToken: PaymentTokenResult,
+    vaultIdHash: string,
+    sealed: string,
+    now: number,
+  ): { won: false } | { won: true; settlement?: SettlementRow } {
+    const { ctx } = this;
+    return ctx.db
       .transaction((): { won: false } | { won: true; settlement?: SettlementRow } => {
         const written = ctx.db
           .prepare(
@@ -142,25 +204,53 @@ export class WalletService {
         return typeof claimed === 'string' ? { won: true } : { won: true, settlement: claimed };
       })
       .immediate();
+  }
 
-    if (!result.won) {
+  /**
+   * The payment-token step failed (design spec §8 step 2): `link_failed` with
+   * `payment_token_failed`, under rule (a). A token this attempt created is released once the
+   * write has committed. If another path won, it is released only when the wallet now holds a
+   * different token; a twin that stored the same token keeps it.
+   */
+  private async failLink(
+    operatorId: string,
+    state: string,
+    setupTokenId: string,
+    err: unknown,
+    createdVaultId?: string,
+  ): Promise<WalletRow> {
+    const { ctx } = this;
+    const now = ctx.clock();
+    const changed = ctx.db
+      .transaction(
+        () =>
+          ctx.db
+            .prepare(
+              `UPDATE wallets SET status = 'link_failed', link_error = 'payment_token_failed', link_state = NULL,
+                 setup_token_id = NULL, updated_at = ?
+               WHERE operator_id = ? AND status = 'waiting_for_approval' AND link_state = ? AND setup_token_id = ?`,
+            )
+            .run(now, operatorId, state, setupTokenId).changes,
+      )
+      .immediate();
+    if (changed === 0) {
       const current = this.get(operatorId);
-      if (current.vault_id_hash !== vaultIdHash) await deleteVaultToken(ctx, sealed, operatorId);
+      if (createdVaultId !== undefined && current.vault_id_hash !== ctx.box.lookupHash(createdVaultId)) {
+        await releaseVaultId(ctx, createdVaultId, operatorId);
+      }
       return current;
     }
+    emitWallet(ctx, operatorId);
+    if (createdVaultId !== undefined) await releaseVaultId(ctx, createdVaultId, operatorId);
+    // Error fields only: never a token id.
+    ctx.logger.warn('Finishing a link failed at the payment-token step', { operatorId, ...errorFields(err) });
     recordAudit(ctx.db, ctx.logger, now, {
-      actorType: 'operator',
-      actorId: operatorId,
-      action: 'wallet.payment_token_saved',
+      actorType: 'system',
+      action: 'wallet.link_failed',
       resourceType: 'wallet',
       resourceId: operatorId,
-      details: { relink: result.settlement !== undefined },
+      details: { ...errorFields(err) },
     });
-    if (result.settlement) {
-      this.settlements.afterClaim(result.settlement);
-      await this.settlements.attempt(result.settlement.id);
-    }
-    emitWallet(ctx, operatorId);
     return this.get(operatorId);
   }
 
@@ -243,24 +333,31 @@ export class WalletService {
     return { wallet, error: 'settlement_in_progress' };
   }
 
-  /** Webhook revocation (`VAULT.PAYMENT-TOKEN.DELETED`). Returns the webhook outcome. */
+  /**
+   * Webhook revocation (`VAULT.PAYMENT-TOKEN.DELETED`, design spec §11): revokes every holder of
+   * the token in `active` or `unlinking`. Returns the webhook outcome.
+   */
   revokeByVaultId(vaultId: string): string {
     const { ctx } = this;
     const vaultIdHash = ctx.box.lookupHash(vaultId);
-    const row = ctx.db.prepare('SELECT operator_id FROM wallets WHERE vault_id_hash = ?').get(vaultIdHash) as
-      | { operator_id: string }
-      | undefined;
-    if (!row) return 'wallet_not_found';
     const now = ctx.clock();
-    const revoked = ctx.db.transaction(() => revokeWalletTx(ctx.db, row.operator_id, now, vaultIdHash)).immediate();
-    if (!revoked) return 'wallet_not_revocable';
-    this.afterRevoke(row.operator_id, now, 'webhook');
+    const result = ctx.db
+      .transaction((): { held: boolean; revoked: string[] } => {
+        const held = ctx.db.prepare('SELECT 1 FROM wallets WHERE vault_id_hash = ? LIMIT 1').get(vaultIdHash) !== undefined;
+        return { held, revoked: held ? revokeTokenHoldersTx(ctx.db, vaultIdHash, now) : [] };
+      })
+      .immediate();
+    if (!result.held) return 'wallet_not_found';
+    if (result.revoked.length === 0) return 'wallet_not_revocable';
+    for (const operatorId of result.revoked) afterRevoke(ctx, operatorId, now, { via: 'webhook' });
     return 'wallet_revoked';
   }
 
   /**
    * Health check (design spec §12): at most 10 wallets per tick, oldest check first. A 404 or a
-   * revocation-class issue revokes; any other error waits for the next check.
+   * revocation-class issue revokes every holder of the checked token (§5.1); only the checked
+   * wallet's `last_checked_at` is written. Any other error waits for the next check. A selected
+   * wallet that was revoked earlier in the same tick (it shared a token) is not checked again.
    */
   async healthCheck(now: number): Promise<number> {
     const { ctx } = this;
@@ -278,6 +375,10 @@ export class WalletService {
     }[];
     let revokedCount = 0;
     for (const row of rows) {
+      const current = readWallet(ctx.db, row.operator_id);
+      if ((current?.status !== 'active' && current?.status !== 'unlinking') || current.vault_id_hash !== row.vault_id_hash) {
+        continue;
+      }
       let revoke = false;
       try {
         await ctx.paypal.getPaymentToken(ctx.box.open(row.vault_id_sealed));
@@ -291,12 +392,12 @@ export class WalletService {
       const revoked = ctx.db
         .transaction(() => {
           ctx.db.prepare('UPDATE wallets SET last_checked_at = ? WHERE operator_id = ?').run(checkedAt, row.operator_id);
-          return revoke ? revokeWalletTx(ctx.db, row.operator_id, checkedAt, row.vault_id_hash) : false;
+          return revoke ? revokeTokenHoldersTx(ctx.db, row.vault_id_hash, checkedAt) : [];
         })
         .immediate();
-      if (revoked) {
+      for (const operatorId of revoked) {
         revokedCount += 1;
-        this.afterRevoke(row.operator_id, checkedAt, 'health_check');
+        afterRevoke(ctx, operatorId, checkedAt, { via: 'health_check' });
       }
     }
     return revokedCount;
@@ -358,17 +459,6 @@ export class WalletService {
            last_checked_at = NULL, charge_retry_after = NULL, updated_at = ? WHERE operator_id = ?`,
       )
       .run(now, now, operatorId);
-  }
-
-  private afterRevoke(operatorId: string, now: number, via: string): void {
-    recordAudit(this.ctx.db, this.ctx.logger, now, {
-      actorType: 'paypal',
-      action: 'wallet.revoked',
-      resourceType: 'wallet',
-      resourceId: operatorId,
-      details: { via },
-    });
-    emitWallet(this.ctx, operatorId);
   }
 }
 

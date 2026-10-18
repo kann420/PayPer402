@@ -105,6 +105,11 @@ export class FakePayPal implements PayPalGateway {
   webhookVerdict: (input: VerifyWebhookSignatureInput) => boolean = (input) =>
     input.headers['paypal-transmission-sig'] === 'valid';
   getPaymentTokenError: unknown = undefined;
+  /**
+   * When set, every new payment-token request returns this id, as PayPal does for a payer who
+   * already holds a token with this merchant (design spec §5.1).
+   */
+  existingPaymentToken: string | undefined = undefined;
 
   /** The next call to `method` waits for `release()`. `entered` resolves once it is waiting. */
   hold(method: Method): { release: () => void; entered: Promise<void> } {
@@ -130,6 +135,11 @@ export class FakePayPal implements PayPalGateway {
   /** Adds an approved setup token, as if the payer approved in the browser. */
   approve(setupTokenId: string): void {
     this.setupTokens.set(setupTokenId, 'APPROVED');
+  }
+
+  /** Marks a setup token `VAULTED`, as after a payment token was created from it. */
+  vault(setupTokenId: string): void {
+    this.setupTokens.set(setupTokenId, 'VAULTED');
   }
 
   private async enter(method: Method, args: unknown[]): Promise<void> {
@@ -161,10 +171,11 @@ export class FakePayPal implements PayPalGateway {
     let id = this.tokensByRequest.get(requestId);
     if (!id) {
       this.counter += 1;
-      id = `PT-${this.counter}`;
+      id = this.existingPaymentToken ?? `PT-${this.counter}`;
       this.tokensByRequest.set(requestId, id);
       this.paymentTokens.add(id);
     }
+    if (this.setupTokens.has(setupTokenId)) this.vault(setupTokenId);
     return { id, customerId: 'CUST-1', payerEmail: this.payerEmail };
   }
 

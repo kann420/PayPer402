@@ -1,7 +1,7 @@
 # PayPer402 facilitator: design spec
 
-> Status: draft 3.2 (2026-10-16), for roadmap Phase 2, revised after the Phase 2 audit. Normative
-> keywords follow RFC 2119.
+> Status: draft 3.3 (2026-10-18), for roadmap Phase 2, revised in Phase 4 for shared payment
+> tokens (§5.1). Normative keywords follow RFC 2119.
 
 The facilitator is the service behind the `batch-settlement` / `paypal:sandbox` binding
 ([scheme_batch_settlement_paypal.md](scheme_batch_settlement_paypal.md)). It:
@@ -85,6 +85,7 @@ invalid.
 | `PAYPAL_WEBHOOK_ID` | no | — | Required to accept webhooks; without it `/webhooks/paypal` answers 503 |
 | `DATA_ENCRYPTION_KEY` | yes | — | 64 hex chars (32 bytes), AES-256-GCM key for sealed columns |
 | `API_KEY_PEPPER` | yes | — | At least 32 chars, HMAC key for API key hashes |
+| `ADMIN_API_KEY` | no | — | At least 32 chars. When set, `POST /v1/admin/demo-operators` is mounted (§7.7); without it the route does not exist |
 | `SETTLEMENT_TICK_SECONDS` | no | `15` | Job tick |
 | `WALLET_CHECK_INTERVAL_SECONDS` | no | `30` | Health check period per wallet in `active` or `unlinking` |
 | `LOG_LEVEL` | no | `info` | `debug` / `info` / `warn` / `error` |
@@ -125,7 +126,7 @@ Pragmas: `journal_mode=WAL`, `foreign_keys=ON`, `busy_timeout=5000`.
 | `operators` | `id TEXT PK`, `name TEXT NOT NULL`, `email TEXT`, `cap_per_call INTEGER NOT NULL`, `cap_daily INTEGER NOT NULL`, `cap_unsettled INTEGER NOT NULL`, `cap_total INTEGER NULL`, `created_at INTEGER NOT NULL` |
 | `sellers` | `id TEXT PK` (= `payTo`), `name TEXT NOT NULL`, `created_at INTEGER NOT NULL` |
 | `api_keys` | `id TEXT PK`, `owner_type TEXT CHECK IN ('operator','seller')`, `owner_id TEXT NOT NULL`, `key_hash TEXT UNIQUE NOT NULL`, `label TEXT`, `created_at`, `last_used_at NULL`, `revoked_at NULL` |
-| `wallets` | `operator_id TEXT PK FK`, `status TEXT CHECK IN ('not_linked','waiting_for_approval','active','unlinking','stopped_by_payer','link_failed')`, `link_state TEXT UNIQUE NULL`, `setup_token_id TEXT NULL`, `link_started_at NULL`, `link_error TEXT NULL`, `vault_id_sealed TEXT NULL`, `vault_id_hash TEXT UNIQUE NULL`, `paypal_customer_id TEXT NULL`, `payer_email_masked TEXT NULL`, `linked_at NULL`, `stopped_at NULL`, `last_checked_at NULL`, `charge_retry_after NULL`, `updated_at INTEGER NOT NULL` |
+| `wallets` | `operator_id TEXT PK FK`, `status TEXT CHECK IN ('not_linked','waiting_for_approval','active','unlinking','stopped_by_payer','link_failed')`, `link_state TEXT UNIQUE NULL`, `setup_token_id TEXT NULL`, `link_started_at NULL`, `link_error TEXT NULL`, `vault_id_sealed TEXT NULL`, `vault_id_hash TEXT NULL` (not unique; several wallets may hold one token, §5.1), `paypal_customer_id TEXT NULL`, `payer_email_masked TEXT NULL`, `linked_at NULL`, `stopped_at NULL`, `last_checked_at NULL`, `charge_retry_after NULL`, `updated_at INTEGER NOT NULL` |
 | `agents` | `id TEXT PK`, `operator_id TEXT FK NOT NULL`, `name TEXT NOT NULL`, `kid TEXT UNIQUE NOT NULL`, `public_key_x TEXT NOT NULL`, `status TEXT CHECK IN ('active','paused')`, `created_at` |
 | `commitments` | `id TEXT PK`, `kid`, `agent_id FK`, `operator_id FK`, `pay_to`, `resource_url`, `max_amount INTEGER`, `amount INTEGER`, `iat`, `recorded_at`, `state TEXT CHECK IN ('unsettled','settling','settled','uncollectable')`, `payload_hash TEXT NOT NULL`, `settlement_id TEXT NULL FK` |
 | `settlements` | `id TEXT PK`, `operator_id FK`, `trigger TEXT CHECK IN ('threshold','daily','manual','unlink','relink')`, `status TEXT CHECK IN ('pending','completed','failed','needs_review')`, `amount INTEGER NOT NULL`, `calls_count INTEGER NOT NULL`, `paypal_request_id TEXT UNIQUE NOT NULL`, `vault_id_hash TEXT NULL` (the wallet's `vault_id_hash` at charge time), `paypal_order_id TEXT NULL`, `paypal_capture_id TEXT NULL`, `capture_status TEXT NULL`, `fee INTEGER NULL`, `net INTEGER NULL`, `failure_code TEXT NULL`, `failure_reason TEXT NULL`, `attempts INTEGER NOT NULL DEFAULT 0`, `next_attempt_at INTEGER NULL`, `created_at`, `updated_at`, `completed_at NULL` |
@@ -143,6 +144,13 @@ Indexes:
   itself enforces at most one pending settlement per operator
 - `settlement_items(commitment_id)`, `settlement_items(pay_to)`
 - `agents(operator_id)`
+- `wallets(vault_id_hash)`, not unique (migration 2)
+
+**Migration 2** (2026-10-18) rebuilds `wallets` without the `UNIQUE` on `vault_id_hash`. Every
+other column, type, `CHECK`, default and the `UNIQUE` on `link_state` stay exactly as in
+migration 1, and every row is copied unchanged. It then creates the index above. It runs in one
+transaction like every migration; no table references `wallets`, so the rebuild needs no change
+to `foreign_keys`. A database at version 1 is upgraded on start-up.
 
 **Sealed values** (`vault_id_sealed`):
 
@@ -151,7 +159,8 @@ Indexes:
   tag.
 - `vault_id_hash` is `HMAC-SHA256(K_lookup, vault_id)` in hex, where
   `K_lookup = HKDF-SHA256(DATA_ENCRYPTION_KEY, salt = "", info = "payper402 vault lookup", 32
-  bytes)`. It is used only to find a wallet from a webhook's `resource.id`.
+  bytes)`. It is used to find the wallets that hold a payment token (§5.1), for example from a
+  webhook's `resource.id`.
 
 **Invariants** (tests MUST check them):
 
@@ -180,7 +189,7 @@ current state.
   redirect.
   - If the write affects zero rows **and** the wallet's current `vault_id_hash` differs from the
     hash of the payment token just created (for example, the link was restarted meanwhile),
-    delete that token at PayPal, best effort.
+    release that token (rule (e), §5.1).
   - A loser that lost to its concurrent return/refresh twin received the same token (same
     `PayPal-Request-Id`), so it deletes nothing.
 - **(b) Relink outcomes:** `WHERE operator_id = ? AND status = 'waiting_for_approval' AND
@@ -192,12 +201,63 @@ current state.
   completion: `WHERE operator_id = ? AND status = 'unlinking'`.
   - If the wallet was revoked meanwhile, it stays `stopped_by_payer`.
   - On completion, whether the wallet is still `unlinking` or has become `stopped_by_payer`, the
-    vault columns are cleared and the payment token is deleted at PayPal. Only the status change
-    depends on the compare-and-set.
-- **(d) Revocation:** `WHERE operator_id = ? AND status IN ('active', 'unlinking')`.
+    vault columns are cleared and the payment token is released (rule (e)). Only the status
+    change depends on the compare-and-set.
+- **(d) Revocation:** `WHERE operator_id = ? AND status IN ('active', 'unlinking')`, also
+  matching the `vault_id_hash` that was charged or checked. It applies to each holder of the
+  token (§5.1).
+- **(e) Releasing a token:** §5.1.
 
 To make (b) possible, the settlement row records which vault id it charged, in a new column:
 `settlements.vault_id_hash TEXT NULL`, set at charge time.
+
+### 5.1 Shared payment tokens
+
+PayPal keeps one vaulted agreement per payer and merchant. A payer may already hold a PayPer402
+payment token and then approve a new setup token. `POST /v3/vault/payment-tokens` then returns
+the **existing** payment token, with the same id and customer id, not a new one.
+
+- **Seen on the sandbox, 2026-10-18.** One sandbox Personal account approved two new setup
+  tokens for two new demo operators, and each setup token had its own customer id. Both became
+  the payment token an earlier operator already held.
+- **Before this draft,** the `UNIQUE` on `vault_id_hash` rejected the second write. The link then
+  stayed `waiting_for_approval` for good, because the setup token was already `VAULTED`.
+
+So one payment token can back several operators. Judges who share one sandbox Personal account,
+each with their own demo operator, are the main case.
+
+- **Holders.** The wallets holding a token are those whose `vault_id_hash` equals its hash. A
+  **live holder** is one in `active`, `unlinking` or `waiting_for_approval`.
+- **Storing.** Finishing a link stores the token even when other wallets already hold it (§8
+  step 2).
+  - Each operator keeps its own caps, ledger, settlements and wallet status.
+  - Settlements charge the shared token separately: one Orders v2 order per settlement, as
+    before.
+- **Releasing, rule (e).** Wherever this spec says to *release* a token for operator X, the
+  facilitator first reads, in one statement right before the PayPal call, whether a live holder
+  other than X has the same hash.
+  - **No other live holder:** delete the token at PayPal, best effort. "Not found" counts as
+    deleted, and a failed delete is audited as `wallet.token_delete_failed`, as before.
+  - **Another live holder:** skip the PayPal call. Record the audit `wallet.token_kept_shared`,
+    with actor `system` and resource X's wallet. The details carry no token id and no hash.
+  - Either way, X's own vault columns are cleared as the calling step says.
+  - Release replaces "delete the payment token at PayPal" in rule (a) above, in §8 steps 1 and
+    3, and in §10 step 4.
+  - **Accepted race:** the check and the PayPal call are separated by an await. If another
+    operator finishes a link with the same token inside that window, PayPal has already deleted
+    the token that operator just stored. Its next charge or health check finds the token gone and
+    revokes it (§12), and it can link again. The window is one PayPal round trip, and the same
+    payer must approve on two operators at that moment.
+- **Revoking.** A token that PayPal reports as gone or cancelled is gone for every holder.
+  - Each revocation path revokes, in one transaction, every holder of that hash that is in
+    `active` or `unlinking`, each with rule (d). The paths are the webhook (§11), the health
+    check (§12), and revocation-class charge errors (§9.3).
+  - A holder in `waiting_for_approval` is not revoked. That is a finished link waiting for its
+    `relink` settlement, and the settlement decides it (§8 step 3).
+- **Consequence for the demo.** When a payer clicks "Stop paying with PayPal", every operator
+  linked to that PayPal account stops, because they share one agreement. With a shared sandbox
+  Personal account, one judge's stop stops the other judges' operators too. The Phase 5 testing
+  instructions must account for this (web-app spec §17).
 
 ## 6. Binding the scheme to the database
 
@@ -278,13 +338,13 @@ These follow the request and response shapes of the x402 `HTTPFacilitatorClient`
 
 | Method and path | Purpose | Notes |
 |---|---|---|
-| `GET /v1/operator` | Overview | `{ operator, wallet, caps, usage: { spentToday, notYetCharged, spentTotal }, activeAgents, lastSettlement }` |
+| `GET /v1/operator` | Overview | `{ operator, wallet, caps, usage: { spentToday, notYetCharged, spentTotal, notYetChargedCalls, chargeable, chargeableCalls, notCollected, notCollectedCalls }, activeAgents, lastSettlement, blockReason }`; the fields are defined below |
 | `PUT /v1/operator/caps` | Set caps | Body `{ perCall, daily, unsettled, total? }`; rules below |
 | `POST /v1/operator/wallet/link` | Start linking | 200 `{ approveUrl, expiresAt }`; 409 `wallet_already_active` (status `active` or `unlinking`); 409 `settlement_in_progress` while a `relink` settlement is pending, or while the wallet is `waiting_for_approval` with a stored payment token and any settlement is pending (§8 step 1); 502 `paypal_unavailable` when PayPal fails |
-| `POST /v1/operator/wallet/refresh` | Re-check a pending link | Same processing as `/paypal/return`; returns the `wallet`; 409 `settlement_in_progress` while a `relink` settlement is pending; 502 `paypal_unavailable` when PayPal fails |
+| `POST /v1/operator/wallet/refresh` | Re-check a pending link | Same processing as `/paypal/return`; returns the `wallet`; 409 `settlement_in_progress` while a `relink` settlement is pending; 502 `paypal_unavailable` when PayPal fails transiently or reading the setup token fails; 200 with `link_failed` when the payment-token step fails otherwise (§8 step 2) |
 | `POST /v1/operator/wallet/unlink` | Unlink | §10; 409 `wallet_not_active` (not `active`), 409 `settlement_failed`, 409 `settlement_in_progress` (also when the first attempt ends in `needs_review`); 409 bodies carry the `wallet` |
 | `POST /v1/agents` | Create an agent | Body `{ name, publicKeyX? }`; §7.4 |
-| `GET /v1/agents` | List agents | Each with `spentToday`, `spentTotal`, `callsToday`, `lastCallAt`, and a derived `blocked` flag |
+| `GET /v1/agents` | List agents | Each with `spentToday`, `spentTotal`, `callsToday`, `lastCallAt`, a derived `blocked` flag and its `blockReason` |
 | `GET /v1/agents/:id` | One agent | The same fields |
 | `PATCH /v1/agents/:id` | Update an agent | Body `{ name?, status?: 'active' \| 'paused' }` |
 | `GET /v1/commitments` | Paid calls | Query `agentId?`, `state?`, `since?`, `until?` (unix seconds over `recordedAt`), `limit` (1–500, default 50), `before?` (a `recordedAt` cursor); newest first |
@@ -318,11 +378,27 @@ resourceUrl, path, amount, maxAmount, state, settlementId }`.
 **An agent is `blocked`** when the wallet is not `active`, or when `exceededCap(caps.perCall, …)`
 would fail for the operator right now.
 
+**Usage counts** (added for the web app, web-app spec §5.2):
+
+- `notYetChargedCalls`: the count of commitments in state `unsettled` or `settling`, matching
+  `notYetCharged`.
+- `chargeable` and `chargeableCalls`: the sum and count of commitments in state `unsettled` only,
+  which is what a manual or unlink settlement would claim now (§9.2). `chargeable` is lower than
+  `notYetCharged` while a `pending` or `needs_review` settlement holds `settling` commitments.
+- `notCollected` and `notCollectedCalls`: the sum and count of commitments in state
+  `uncollectable`.
+
+**`blockReason`** (on `GET /v1/operator` and on each agent) uses the same check as `blocked`:
+`'wallet_not_active'` when the wallet is not `active`, otherwise the cap that
+`exceededCap(caps.perCall, …)` returns (`'daily'`, `'unsettled'` or `'total'`), or `null`.
+`'perCall'` cannot occur and maps to `null`. `blocked` equals `blockReason !== null`. Neither looks
+at the agent's own `status`.
+
 ### 7.3 Seller (seller key)
 
 | Method and path | Purpose |
 |---|---|
-| `GET /v1/seller` | `{ seller, usage: { revenueToday, revenueTotal, pending, callsToday, uniqueAgentsToday } }`. `pending` is the seller's commitments in state `unsettled` or `settling`. |
+| `GET /v1/seller` | `{ seller, usage: { revenueToday, revenueTotal, pending, pendingCalls, callsToday, uniqueAgentsToday } }`. `pending` is the seller's commitments in state `unsettled` or `settling`; `pendingCalls` is their count. |
 | `GET /v1/seller/commitments` | The seller's paid calls, with the same query parameters as the operator's (including `since`/`until`). Same shape, but `agentId` and `agentName` are replaced by an opaque `agentRef` (the first 8 chars of `HMAC(API_KEY_PEPPER, agentId)`), and there is no operator data. |
 | `GET /v1/seller/settlements` | Charges that cover the seller's commitments, from `settlement_items` (`pay_to` = seller): `{ id, createdAt, status, sellerAmount, sellerCalls, feeShare, netShare }`. `feeShare = round(fee × sellerAmount / amount)` and `netShare = sellerAmount − feeShare`; both are null until the fee is known. |
 
@@ -370,6 +446,21 @@ variant:
   server, with the `Authorization` header, and relays it.
 
 
+### 7.7 Admin (admin key)
+
+`POST /v1/admin/demo-operators` creates one demo operator for a web visitor (web-app spec §5.1).
+
+- **Mounting:** only when `ADMIN_API_KEY` is set. Without it the path answers 404 `not_found`.
+- **Auth:** `Authorization: Bearer <ADMIN_API_KEY>`. The SHA-256 digests of the given and the
+  configured key are compared with `timingSafeEqual`. A missing or wrong key, and any operator or
+  seller key, gets 401 `unauthorized`.
+- **Body:** strict `{ name?: string }`, trimmed, 1 to 60 characters, default `"Northwind Research
+  (demo)"`. The default never matches the seed's operator name, which `seed --reset` deletes by.
+- **Effect:** one IMMEDIATE transaction that inserts an operator with the caps of `DEMO_OPERATOR`
+  and `email: null`, a `not_linked` wallet, an operator key labelled `web-demo` (through
+  `issueApiKey`), and the audit record `operator.demo_created` with actor `system` / `admin`.
+- **Response:** 201 `{ operator: { id, name }, apiKey }`. The key appears only in this response.
+
 ## 8. Linking a wallet
 
 Wallet states and transitions:
@@ -379,7 +470,7 @@ Wallet states and transitions:
 | `not_linked`, `link_failed`, `stopped_by_payer` | `waiting_for_approval` | Linking starts |
 | `waiting_for_approval` | `waiting_for_approval` | Linking restarts (a new `state` and setup token) |
 | `waiting_for_approval` | `active` | Linking finishes (no uncollectable debt, or after the relink settlement completes) |
-| `waiting_for_approval` | `link_failed` | Cancel, expiry, or a failed relink settlement |
+| `waiting_for_approval` | `link_failed` | Cancel, expiry, a failed relink settlement, or a failed payment-token step (§8 step 2) |
 | `active` | `unlinking` | The operator unlinks (§10) |
 | `unlinking` | `not_linked` or `active` | §10 |
 | `active`, `unlinking` | `stopped_by_payer` | Revocation (§12) |
@@ -392,8 +483,8 @@ Every transition that follows a PayPal call uses the compare-and-set rules in §
      wallet is `waiting_for_approval` with a stored payment token and any settlement is `pending`
      (a finished link waiting to claim its `relink`; restarting would delete that token). Both
      answer 409 `settlement_in_progress`.
-   - Deletes any payment token stored from an earlier link at PayPal (ignoring "not found") and
-     clears the vault columns.
+   - Releases any payment token stored from an earlier link (rule (e), §5.1) and clears the vault
+     columns.
    - Creates a Vault v3 setup token with:
      - `payment_source.paypal`: `usage_type: MERCHANT`, `usage_pattern: UNSCHEDULED_POSTPAID`,
        `customer_type: CONSUMER`
@@ -409,13 +500,41 @@ Every transition that follows a PayPal call uses the compare-and-set rules in §
      `/refresh` endpoint covers the case where the browser cannot reach `PUBLIC_BASE_URL`.
 2. **Finishing (`/paypal/return` or `/refresh`)**, only while `setup_token_id` is set:
    - Read the wallet's `link_state` and `setup_token_id`, then read the setup token from PayPal.
-   - Not `APPROVED` yet: leave the wallet unchanged.
-   - `APPROVED`: create a payment token with `PayPal-Request-Id = state`. This is idempotent, so
-     a concurrent return and refresh receive the same token.
+   - Neither `APPROVED` nor `VAULTED`: leave the wallet unchanged.
+   - `APPROVED` or `VAULTED`: create a payment token with `PayPal-Request-Id = state`.
+     - This is idempotent, so a concurrent return and refresh receive the same token.
+     - `VAULTED` means an earlier attempt already created the payment token, but its result was
+       never stored. For example, the store threw, or the response was lost. Repeating the request
+       with the same request id returns that token. On the sandbox (2026-10-18), a repeat about
+       30 minutes after the first request returned 200 with the same token.
+     - The token may already be held by other wallets (§5.1). That is not an error.
    - Store the result with compare-and-set rule (a) in §5: `vault_id_sealed`, `vault_id_hash`,
      `paypal_customer_id`, and `payer_email_masked` (the first 2 chars of the local part, then
      `***@domain`). Clear `link_state` and `setup_token_id`. Only the caller whose write
      succeeded continues below; the other returns the current wallet.
+   - **Failures.** No failure may leave a link waiting with no way out:
+     - **Reading the setup token fails:** leave the wallet unchanged and report the error as
+       before. `/refresh` answers 502 `paypal_unavailable`, and the return redirect carries the
+       current status.
+     - **Creating the payment token fails with a transient error** (the §9.3 classes): leave the
+       wallet unchanged and report the error as before. A later `/refresh` repeats the request; if
+       PayPal did process it, that repeat goes through `VAULTED`.
+     - **Creating the payment token fails with any other PayPal error, or storing the result
+       throws:**
+       - In a new transaction, with the compare-and-set of rule (a), set `status: 'link_failed'`
+         and `link_error: 'payment_token_failed'`. Clear `link_state` and `setup_token_id`, and
+         emit `wallet.updated`.
+       - **If that write affects one row:**
+         - If a payment token was created, release it (rule (e)) once the write has committed.
+         - Log and audit `wallet.link_failed`. The details hold the error fields only (status,
+           name, issues, debug id), never a token id.
+         - The caller answers with the wallet: `/refresh` gives 200 with `link_failed`, and the
+           return redirect gives `status=link_failed`.
+       - **If it affects zero rows,** another path won, as in rule (a).
+         - Release the created token only if the wallet's current `vault_id_hash` differs from
+           its hash. Otherwise release nothing, because the winner stored that same token on
+           this wallet.
+         - Return the current wallet.
    - Then, in the same transaction as that write:
      - **No uncollectable commitments:** status becomes `active`, with `linked_at = now`.
      - **Uncollectable commitments exist:** status stays `waiting_for_approval` and a `relink`
@@ -428,7 +547,7 @@ Every transition that follows a PayPal call uses the compare-and-set rules in §
    | Settlement outcome | Wallet |
    |---|---|
    | `completed` | `active`, `linked_at = now`; its commitments are `settled` |
-   | `failed` (decline **or** revocation class) | `link_failed` with `link_error: 'relink_settlement_failed'`; the new payment token is deleted at PayPal and the vault columns cleared; the commitments go back to `uncollectable` and keep `settlement_id`. The wallet does **not** become `stopped_by_payer`; nothing new was ever usable. |
+   | `failed` (decline **or** revocation class) | `link_failed` with `link_error: 'relink_settlement_failed'`; the new payment token is released (rule (e), §5.1) and the vault columns cleared; the commitments go back to `uncollectable` and keep `settlement_id`. The wallet does **not** become `stopped_by_payer`; nothing new was ever usable. |
    | `needs_review` | Stays `waiting_for_approval`; nothing is deleted; agents stay blocked |
    | still `pending` (transient, `PENDING` capture) | No change until it resolves |
 
@@ -436,6 +555,14 @@ Every transition that follows a PayPal call uses the compare-and-set rules in §
    `vault_id_sealed` is null and `link_started_at` is more than 3 days old (PayPal's setup-token
    expiry) becomes `link_failed` with `link_error: 'expired'`. Expiry never applies once a
    payment token exists.
+   - **Accepted:** a link whose setup token is already `VAULTED`, but whose token was never
+     stored, can still be cancelled or expire. The payment token then stays at PayPal with no
+     holder.
+     - That token was never stored and is never charged.
+     - The payer's next link returns that same token.
+   - **Accepted:** a setup-token read that keeps failing with a non-transient error (for example
+     404) leaves the link waiting until this expiry. `/refresh` answers 502 meanwhile, and
+     "Restart linking" is the way out.
 5. **Unknown or used `state`:** answer with the redirect anyway. Reveal nothing and change
    nothing.
 
@@ -502,7 +629,7 @@ After the commit, emit `settlement.updated` (`pending`).
 | Capture `COMPLETED` | `completed`, with order id, capture id, `fee`/`net` from `seller_receivable_breakdown`, and `completed_at` | `settled` | `charge_retry_after = NULL` |
 | Capture `PENDING` | Stays `pending` with order id, capture id and `capture_status: 'PENDING'` | Unchanged | Resolved later by webhook (§11) or by polling `GET /v2/checkout/orders/{id}` each tick |
 | Capture `DECLINED` / `FAILED`, or a **decline** error | `failed`, `failure_code: 'declined'`, `failure_reason` | Back to `unsettled`; `settlement_id` cleared (`settlement_items` keeps the record). If the wallet is no longer `active` or `unlinking` (for example revoked meanwhile), the batch becomes `uncollectable` instead and keeps `settlement_id`, so a later `relink` collects it. | `charge_retry_after = now + 900` (not for `relink`) |
-| **Revocation** error | `failed`, `failure_code: 'payer_stopped'` | This batch and every other `unsettled` commitment of the operator become `uncollectable` | Wallet revoked (§12), except for `relink` (§8) |
+| **Revocation** error | `failed`, `failure_code: 'payer_stopped'` | This batch and every other `unsettled` commitment of the operator become `uncollectable` | Every holder of the charged token in `active` or `unlinking` is revoked (§12, §5.1). For `relink`, the charging wallet follows §8 instead; it is `waiting_for_approval`, so the revocation does not touch it. |
 | **Transient** error | Stays `pending`; `attempts += 1`; `next_attempt_at = now + [30, 120, 600][min(attempts−1, 2)]` | Unchanged | Retried with the **same** `paypal_request_id` |
 | **Duplicate** error (`DUPLICATE_INVOICE_ID`, `ORDER_ALREADY_CAPTURED`) | If an order id is known, call `getOrder` and apply its capture outcome; otherwise `needs_review`. The order id comes from the stored `paypal_order_id` or from `PayPalApiError.orderId`, which the client fills in when the failing call was the capture leg `/v2/checkout/orders/{id}/capture`. | Unchanged until resolved | — |
 | **Other** error | `needs_review`, with the error recorded | Stay `settling` | Not retried automatically; the operator's unsettled cap keeps blocking new usage |
@@ -570,8 +697,9 @@ not take the operator offline.
    Every follow-up write in this step and in step 4 uses compare-and-set rule (c) in §5. If the
    wallet was revoked meanwhile (by webhook or health check), it stays `stopped_by_payer` and is
    never set back to `active`.
-4. Delete the payment token at PayPal, ignoring "not found", and clear the vault columns. Then,
-   with rule (c), set the status to `not_linked`. A wallet that was revoked meanwhile keeps
+4. Release the payment token (rule (e), §5.1), and clear the vault columns. If another operator
+   still holds the same token, PayPal keeps it, and only this operator's link ends. Then, with
+   rule (c), set the status to `not_linked`. A wallet that was revoked meanwhile keeps
    `stopped_by_payer`. Emit `wallet.updated`.
 
 ## 11. PayPal webhooks
@@ -594,7 +722,7 @@ before the global JSON parser, so the JSON parser never touches it.
 
 | `event_type` | Handling |
 |---|---|
-| `VAULT.PAYMENT-TOKEN.DELETED` | Find the wallet by `vault_id_hash` of `resource.id`; if it is `active` or `unlinking`, revoke it (§12) |
+| `VAULT.PAYMENT-TOKEN.DELETED` | Find every wallet whose `vault_id_hash` is the hash of `resource.id`, and revoke each one in `active` or `unlinking` (§12, §5.1). The outcome is `wallet_revoked` when at least one was revoked, `wallet_not_revocable` when wallets hold the token but none could be revoked, and `wallet_not_found` when no wallet holds it. |
 | `PAYMENT.CAPTURE.COMPLETED` | Find the settlement by capture id (`resource.id`) or order id (`resource.supplementary_data.related_ids.order_id`); apply the `COMPLETED` outcome (fee and net from `resource.seller_receivable_breakdown`), with the compare-and-set of §9.3 |
 | `PAYMENT.CAPTURE.DECLINED`, `PAYMENT.CAPTURE.DENIED` | The same lookup; apply the decline outcome |
 | `PAYMENT.CAPTURE.PENDING` | Update `capture_status` |
@@ -617,13 +745,18 @@ A wallet becomes `stopped_by_payer` through any of three paths:
      is null or older than `WALLET_CHECK_INTERVAL_SECONDS`. Check at most 10 per tick, oldest
      first, which keeps well under the sandbox rate limit.
    - Each check is `GET /v3/vault/payment-tokens/{id}`; set `last_checked_at` either way.
-   - A 404, or a revocation-class issue, revokes the wallet.
+   - A 404, or a revocation-class issue, revokes every holder of the checked token (§5.1). Only
+     the checked wallet's `last_checked_at` is set.
    - Any other error (transient, or another 4xx) is ignored until the next check.
    - The vault spike showed a revoked token returning `404 TOKEN_NOT_FOUND`. This path makes the
      demo scene reliable.
 
-**Revoking a wallet**, in one transaction, using compare-and-set rule (d) in §5 (only wallets in
-`active` or `unlinking`):
+**Revoking a token:** every path above revokes every holder of the token that is in `active` or
+`unlinking` (§5.1), in one transaction. Each holder is revoked as below, and each revoked holder
+gets its own `wallet.updated` event and its own audit record.
+
+**Revoking a wallet**, using compare-and-set rule (d) in §5 (only wallets in `active` or
+`unlinking`):
 
 - Set `status = 'stopped_by_payer'` and `stopped_at = now`.
 - Set every `unsettled` commitment of the operator to `uncollectable`.
@@ -662,6 +795,36 @@ demo accounts and recreates them, which issues new keys.
 
 ## Change notes
 
+- **Draft 3.3 (2026-10-18), shared payment tokens, after the user's second local run.**
+  - **What happened:** after a restart, the user signed in as a new demo operator and linked the
+    same sandbox Personal account. PayPal returned the token an earlier operator already held,
+    and the `UNIQUE` on `vault_id_hash` rejected the write. The return page then waited for good.
+  - **Changes:**
+    - §5: `vault_id_hash` is no longer unique (migration 2, with a non-unique index), and rule (e)
+      was added.
+    - §5.1: holders, release and revocation of a shared token.
+    - §8 step 2: `VAULTED` resumes the link, and a non-transient failure becomes `link_failed`
+      (`payment_token_failed`).
+    - §8 step 1, §8 step 3, rule (a) and §10 step 4: "delete" becomes "release".
+    - §9.3, §11 and §12: a revocation covers every holder.
+  - **Build notes (Milestone 11 build, 2026-10-18).** Where the spec was silent the build chose
+    (details in the Phase 4 BUILD_SPEC "Findings"):
+    - an error from `createPaymentToken` that is not a PayPal answer at all counts as
+      non-transient, so it also gives `payment_token_failed` (only the §9.3 transient classes
+      leave the link waiting)
+    - `wallet.token_kept_shared` has no details; `wallet.link_failed` has actor `system`
+    - every holder revoked through a charge error is audited with the charging settlement's id
+    - the health check skips a selected wallet that an earlier check in the same tick already
+      revoked through a shared token (no PayPal call, no `last_checked_at`)
+    - migration 2 builds `wallets_new`, copies, drops `wallets` and renames; the index is
+      `wallets_vault_id_hash`
+- **Phase 4 additions (2026-10-17), for the web app (web-app spec §5).** All additive; existing
+  fields and behaviour are unchanged:
+  - §3: the optional `ADMIN_API_KEY`.
+  - §7.2: `usage.notYetChargedCalls`, `chargeable`, `chargeableCalls`, `notCollected`,
+    `notCollectedCalls`, and `blockReason` on the operator and on each agent.
+  - §7.3: `usage.pendingCalls` for sellers.
+  - §7.7: `POST /v1/admin/demo-operators`.
 - **Draft 3.2, after the Phase 2 audit (2026-10-16):**
   - payment-token and setup-token ids never appear in PayPal error paths or messages (the client
     shows `/v3/vault/payment-tokens/*`); logs and audit records carry only status, name, issues

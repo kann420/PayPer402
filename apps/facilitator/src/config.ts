@@ -18,6 +18,8 @@ export interface Config {
   /** 32 bytes, from 64 hex characters. */
   dataEncryptionKey: Buffer;
   apiKeyPepper: string;
+  /** At least 32 characters. When set, `POST /v1/admin/demo-operators` is mounted (design spec §3). */
+  adminApiKey?: string;
   settlementTickSeconds: number;
   walletCheckIntervalSeconds: number;
   logLevel: LogLevel;
@@ -77,6 +79,7 @@ const schema = z.object({
     .trim()
     .regex(/^[0-9a-fA-F]{64}$/, 'must be 64 hex characters (32 bytes)'),
   API_KEY_PEPPER: z.string().min(32, 'must be at least 32 characters'),
+  ADMIN_API_KEY: optionalString.pipe(z.string().min(32, 'must be at least 32 characters').optional()),
   SETTLEMENT_TICK_SECONDS: positiveInt(15),
   WALLET_CHECK_INTERVAL_SECONDS: positiveInt(30),
   LOG_LEVEL: optionalString.pipe(z.enum(['debug', 'info', 'warn', 'error']).optional()),
@@ -113,6 +116,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     ...(e.PAYPAL_WEBHOOK_ID === undefined ? {} : { paypalWebhookId: e.PAYPAL_WEBHOOK_ID }),
     dataEncryptionKey: Buffer.from(e.DATA_ENCRYPTION_KEY, 'hex'),
     apiKeyPepper: e.API_KEY_PEPPER,
+    ...(e.ADMIN_API_KEY === undefined ? {} : { adminApiKey: e.ADMIN_API_KEY }),
     settlementTickSeconds: e.SETTLEMENT_TICK_SECONDS,
     walletCheckIntervalSeconds: e.WALLET_CHECK_INTERVAL_SECONDS,
     logLevel: e.LOG_LEVEL ?? 'info',

@@ -148,6 +148,44 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX api_keys_owner ON api_keys(owner_type, owner_id);
     `,
   },
+  {
+    // Shared payment tokens (design spec §5, §5.1): several wallets may hold one token, so
+    // `vault_id_hash` loses its UNIQUE. Everything else is exactly as in migration 1. No table
+    // references `wallets`, so the rebuild needs no change to `foreign_keys`.
+    version: 2,
+    sql: `
+      CREATE TABLE wallets_new (
+        operator_id TEXT PRIMARY KEY REFERENCES operators(id),
+        status TEXT NOT NULL CHECK (status IN
+          ('not_linked', 'waiting_for_approval', 'active', 'unlinking', 'stopped_by_payer', 'link_failed')),
+        link_state TEXT UNIQUE,
+        setup_token_id TEXT,
+        link_started_at INTEGER,
+        link_error TEXT,
+        vault_id_sealed TEXT,
+        vault_id_hash TEXT,
+        paypal_customer_id TEXT,
+        payer_email_masked TEXT,
+        linked_at INTEGER,
+        stopped_at INTEGER,
+        last_checked_at INTEGER,
+        charge_retry_after INTEGER,
+        updated_at INTEGER NOT NULL
+      );
+
+      INSERT INTO wallets_new (operator_id, status, link_state, setup_token_id, link_started_at, link_error,
+        vault_id_sealed, vault_id_hash, paypal_customer_id, payer_email_masked, linked_at, stopped_at,
+        last_checked_at, charge_retry_after, updated_at)
+      SELECT operator_id, status, link_state, setup_token_id, link_started_at, link_error,
+        vault_id_sealed, vault_id_hash, paypal_customer_id, payer_email_masked, linked_at, stopped_at,
+        last_checked_at, charge_retry_after, updated_at
+      FROM wallets;
+
+      DROP TABLE wallets;
+      ALTER TABLE wallets_new RENAME TO wallets;
+      CREATE INDEX wallets_vault_id_hash ON wallets(vault_id_hash);
+    `,
+  },
 ];
 
 export class DatabaseTooNewError extends Error {

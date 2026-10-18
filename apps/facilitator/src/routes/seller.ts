@@ -22,6 +22,7 @@ export function sellerRoutes(ctx: ServiceContext): Router {
            COALESCE(SUM(CASE WHEN recorded_at >= @dayStart AND recorded_at < @dayEnd THEN amount ELSE 0 END), 0) AS revenueToday,
            COALESCE(SUM(amount), 0) AS revenueTotal,
            COALESCE(SUM(CASE WHEN state IN ('unsettled', 'settling') THEN amount ELSE 0 END), 0) AS pending,
+           COALESCE(SUM(CASE WHEN state IN ('unsettled', 'settling') THEN 1 ELSE 0 END), 0) AS pendingCalls,
            COALESCE(SUM(CASE WHEN recorded_at >= @dayStart AND recorded_at < @dayEnd THEN 1 ELSE 0 END), 0) AS callsToday,
            COUNT(DISTINCT CASE WHEN recorded_at >= @dayStart AND recorded_at < @dayEnd THEN agent_id END) AS uniqueAgentsToday
          FROM commitments WHERE pay_to = @sellerId`,

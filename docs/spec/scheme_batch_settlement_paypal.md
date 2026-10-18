@@ -39,6 +39,9 @@ PayPal wallet saved with the PayPal Vault v3 API (`usage_type: MERCHANT`,
    - The operator approves it on PayPal.
    - The facilitator exchanges the setup token for a payment token (`vault_id`) and stores it.
      The wallet status becomes `active`.
+   - PayPal keeps one agreement per payer and merchant. A payer who links the same PayPal account
+     to two operators therefore gets the same `vault_id` for both. A facilitator MUST allow
+     that, and a revocation of that `vault_id` applies to every operator holding it.
 2. The operator sets caps: per call, per UTC day, unsettled, and (optionally) total.
 3. The operator registers one or more agent public keys. Each key's id (`kid`, defined below) is
    derived from the public key.
