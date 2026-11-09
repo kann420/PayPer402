@@ -20,7 +20,7 @@ export interface Jobs {
 }
 
 /**
- * Tick scheduler (BUILD_SPEC Milestone 5): link expiry, due retries and crash recovery, capture
+ * Tick scheduler: link expiry, due retries and crash recovery, capture
  * polling, relink resumption, threshold and daily triggers, and wallet health checks. Each step
  * is isolated: a failing step is logged and the rest still run.
  */

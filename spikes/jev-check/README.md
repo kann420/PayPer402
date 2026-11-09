@@ -1,7 +1,6 @@
 # Jev spike: check the SDK and the model before Phase 3.5
 
-This spike answers one question before the decision-layer spec
-([docs/spec/decision-layer.md](../../docs/spec/decision-layer.md)) goes to review: **does
+This spike answers one question before the decision-layer spec goes to review: **does
 `@typesafe-ai/sdk` 0.7.0 with Jev 1.14 behave the way the spec assumes?**
 
 - If yes, draft 2 of the spec pins `jev-1.14.0` and SDK `0.7.0`.

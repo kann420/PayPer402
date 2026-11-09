@@ -1,5 +1,5 @@
 /**
- * Decision-layer evaluation (docs/spec/decision-layer.md §7): runs the labelled cases against the
+ * Decision-layer evaluation: runs the labelled cases against the
  * real Jev through the shipped code (createJevSpendCheck, judgeSpendCheck with the production
  * deadline, applySpendPolicy), then computes thresholds and modes by the fixed procedure.
  *

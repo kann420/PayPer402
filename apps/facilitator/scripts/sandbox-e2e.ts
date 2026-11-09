@@ -1,5 +1,5 @@
 /**
- * PayPer402 sandbox end-to-end check (BUILD_SPEC Milestone 6). Runs against the REAL PayPal
+ * PayPer402 sandbox end-to-end check. Runs against the REAL PayPal
  * sandbox and needs a human twice: to approve the link and to revoke it.
  *
  *   npm run sandbox-e2e -w apps/facilitator                 full run (link, charge, revoke)

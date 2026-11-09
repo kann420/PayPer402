@@ -1,6 +1,6 @@
 /**
  * Jev spike: checks the TypeSafe JavaScript SDK (0.7.0) and the Jev models against what the
- * decision-layer spec (docs/spec/decision-layer.md) relies on, before Phase 3.5 is specced for build.
+ * decision-layer spec relies on, before Phase 3.5 is specced for build.
  *
  *   npm run spike -w spikes/jev-check                  offline and online checks
  *   npm run spike -w spikes/jev-check -- --offline     offline checks only (no key, no network)

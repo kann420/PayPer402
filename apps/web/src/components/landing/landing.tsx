@@ -227,7 +227,7 @@ function Hero({ state, paused, reduced, onTogglePause }: { state: TickerState; p
               <div className="pbox" style={{ background: '#FFFFFF', border: '1.5px solid #E2E4DE', boxShadow: glow('paypal') }}>
                 {/*
                   The settlement step shows the official PayPal logo, unaltered and as on the board, to name PayPal as
-                  the payment rail. This is its only use (design spec §10.1 and §15.4, CLAUDE.md Trademark rule).
+                  the payment rail. This is its only use.
                 */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={PAYPAL_MARK} alt="PayPal" style={{ height: '50%', width: 'auto', display: 'block' }} />

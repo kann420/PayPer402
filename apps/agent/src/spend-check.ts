@@ -1,5 +1,5 @@
 /**
- * The decision layer's SDK-agnostic core (docs/spec/decision-layer.md): types, constants, the Jev
+ * The decision layer's SDK-agnostic core: types, constants, the Jev
  * state builder, the policy, the payer-owned deadline and the start-up line. Implementations of
  * `SpendCheck` live elsewhere; this module never imports the TypeSafe SDK.
  */

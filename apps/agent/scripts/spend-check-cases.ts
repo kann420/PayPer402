@@ -1,5 +1,5 @@
 /**
- * Labelled cases for the decision-layer evaluation (docs/spec/decision-layer.md §7.2). Labels and
+ * Labelled cases for the decision-layer evaluation. Labels and
  * their reasons were written before any evaluation run, and are never changed to fit results.
  *
  * The data is frozen so the file is stable across days: quotes at FIXED_AT_MS, articles with a

@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AGENT_BETAS, FINISH_SCHEMA, SYSTEM_PROMPT, runAgent } from './agent';
 import type { AgentEvent } from './events';
@@ -75,16 +74,13 @@ describe('runAgent', () => {
     expect(messages).toEqual([{ role: 'user', content: `Task: ${TASK}\n\nBudget for this run: $1.00. Per-call limit: $0.10.` }]);
   });
 
-  it('keeps the system prompt byte-identical between runs, and equal to design spec §6.2', async () => {
+  it('keeps the system prompt byte-identical between runs', async () => {
     const first = await run(() => [message([finishCall()])]);
     await first.env.close();
     env = undefined;
     const second = await run(() => [message([finishCall()])]);
     expect(first.fake.requests[0]?.body['system']).toBe(second.fake.requests[0]?.body['system']);
-    const spec = readFileSync(new URL('../../../docs/spec/agent.md', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-    const section = spec.slice(spec.indexOf('### 6.2'));
-    const block = /```\n([\s\S]*?)\n```/.exec(section)?.[1];
-    expect(SYSTEM_PROMPT).toBe(block);
+    expect(first.fake.requests[0]?.body['system']).toBe(SYSTEM_PROMPT);
   });
 
   it('asks for a plan note before the first paid call and an English spend explanation (web-app spec §6)', () => {
