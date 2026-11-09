@@ -9,6 +9,10 @@ get billed once.
 
 Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com) (October–November 2026).
 
+- **Demo video:** _link coming soon_
+- **Binding spec:** [docs/spec/scheme_batch_settlement_paypal.md](docs/spec/scheme_batch_settlement_paypal.md)
+- **How it meets the judging criteria:** [see below](#judging-criteria)
+
 ## The problem
 
 AI agents increasingly need to buy things on their own: a market quote, a page summary, a
@@ -57,6 +61,82 @@ operators and API sellers do not want to hold stablecoins; they already have Pay
   from the web app. The agent's key is generated locally and never leaves the machine.
   `payper402 mcp` lets Claude Code or Claude Desktop pay per call through PayPer402.
 - **A demo seller.** "Acme Data" sells four paid APIs (simulated data), priced from 1 to 25 cents.
+
+## Judging criteria
+
+Every feature was checked against the hackathon's five criteria before it was built. This is the
+evidence for each one.
+
+### Technological implementation
+
+*How thoroughly and skillfully does the project use the PayPal Developer Platform and AI tools?*
+
+- **PayPal is the payment rail, not a checkout button.** PayPer402 uses four PayPal APIs together
+  (OAuth, Vault v3, Orders v2 and Webhooks): a one-time `UNSCHEDULED_POSTPAID` vault link, then
+  merchant-initiated captures with no payer present, idempotent with `PayPal-Request-Id`, and
+  revocation driven by PayPal's own error codes and webhook. See [Use of PayPal](#use-of-paypal).
+- **AI does real work in four places:** a Claude agent with tool use that decides what to buy, a
+  calibrated Jev check before every payment (its thresholds come from a labelled evaluation), a
+  Claude analyst inside the AG Studio dashboards, and Claude-powered paid APIs on the seller side.
+  See [Use of AI](#use-of-ai).
+- **Built on the official x402 SDK.** The PayPal network is a set of plug-ins for `@x402/core`;
+  sellers use the stock `@x402/express` middleware, with no fork.
+- **Working and tested.** The full flow (link, pay per call, one batch capture, revocation) passed
+  end to end against the real PayPal sandbox, and more than 1,000 automated tests cover it with
+  every external API mocked.
+
+### Design
+
+*Does the project deliver a complete, coherent product experience?*
+
+- **One product for three people:** the operator (web app: link PayPal, set caps, manage agents,
+  watch spending, charge, see a stopped link), the seller (revenue per endpoint and settlement
+  status), and the developer (a `payper402` command and an MCP server for Claude Code and Claude
+  Desktop).
+- **The whole lifecycle is designed, not just the happy path:** onboarding in three steps, empty
+  and loading states, declined and failed charges, a link stopped by the payer, paused and blocked
+  agents, and a light or dark Live run view.
+- **The agent explains itself.** Live run shows each step as it happens (plan, price seen, decision,
+  payment, refusal) and ends with a plain-English spend report whose numbers come from the ledger,
+  never from the model.
+
+### Potential impact
+
+*Does the project make a credible, specific case for solving a real problem for a real audience?*
+
+- **The audience:** teams that run AI agents and want them to buy data and tools on their own, and
+  API sellers who want to charge per call without crypto or a sign-up wall.
+- **The problem, in numbers:** with a fixed fee of about $0.49 per US PayPal checkout transaction,
+  charging a 2-cent API call on its own would cost about 25 times the price of the call. Batching
+  turns many signed micro-commitments into one charge, so the fixed fee is paid once per batch.
+- **Control stays with the payer.** Caps per call, per day and in total, an unsettled cap that
+  bounds the credit, and "Stop paying with PayPal" in the payer's own PayPal account, which blocks
+  the agent on its very next call. This is shown working in the demo.
+- **Sellers add one middleware** and get paid through PayPal, with an account most businesses
+  already have.
+
+### Innovation
+
+*How creative and novel is the concept, and does it differ from existing concepts?*
+
+- **A PayPal rail for x402.** x402 payments normally settle on a blockchain, and existing fiat
+  approaches charge cards. PayPer402 defines an open x402 network binding for the PayPal wallet
+  (`paypal:sandbox`, scheme `batch-settlement`), written as a spec in the style of the x402 scheme
+  specs, so any x402 client or server can adopt it.
+- **Postpaid micro-commitments.** Signed per-call commitments plus batched merchant-initiated
+  charges make cent-level pricing possible on a rail with fixed per-transaction fees, with the
+  credit risk bounded by design.
+- **A second opinion before paying.** The agent's spending is checked by a separate calibrated
+  model, and code, not the model, makes the final call.
+
+### Presentation
+
+*Does the video clearly demonstrate the project working end to end?*
+
+- **Demo video:** _link coming soon_. It follows one story: the problem, link once, the agent pays
+  per call, one PayPal charge, the dashboards, and "Stop paying with PayPal" blocking the agent.
+- **Try it yourself:** this README walks through the same story locally in seven steps. See
+  [Run it locally](#run-it-locally).
 
 ## Use of PayPal
 
