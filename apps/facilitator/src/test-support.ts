@@ -43,6 +43,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     apiKeyPepper: TEST_PEPPER,
     settlementTickSeconds: 15,
     walletCheckIntervalSeconds: 30,
+    trustProxy: false,
     logLevel: 'error',
     ...overrides,
   };
@@ -268,6 +269,7 @@ export function createHarness(options: { config?: Partial<Config>; sseKeepaliveM
     db,
     paypal,
     clock: () => clock.now,
+    rateClock: () => clock.now * 1000,
     events,
     logger: options.logger ?? silentLogger,
     ...(options.sseKeepaliveMs === undefined ? {} : { sseKeepaliveMs: options.sseKeepaliveMs }),

@@ -35,6 +35,7 @@ export function deleteOperator(db: Db, operatorId: string): void {
   ).run(operatorId, operatorId);
   db.prepare('DELETE FROM commitments WHERE operator_id = ?').run(operatorId);
   db.prepare('DELETE FROM settlements WHERE operator_id = ?').run(operatorId);
+  db.prepare('DELETE FROM agent_claims WHERE operator_id = ?').run(operatorId);
   db.prepare('DELETE FROM agents WHERE operator_id = ?').run(operatorId);
   db.prepare('DELETE FROM wallets WHERE operator_id = ?').run(operatorId);
   db.prepare(`DELETE FROM api_keys WHERE owner_type = 'operator' AND owner_id = ?`).run(operatorId);

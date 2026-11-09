@@ -170,6 +170,49 @@ export function agentWithUsage(db: Db, row: AgentRow, operator: OperatorRow, wal
   return { ...agentView(row), ...usage, blocked: blockReason !== null, blockReason };
 }
 
+export interface OperatorUsage {
+  spentToday: number;
+  notYetCharged: number;
+  spentTotal: number;
+  notYetChargedCalls: number;
+  chargeable: number;
+  chargeableCalls: number;
+  notCollected: number;
+  notCollectedCalls: number;
+}
+
+/** The operator's spend figures, as in `GET /v1/operator` `usage` (design spec §7.2). */
+export function operatorUsage(db: Db, operatorId: string, now: number): OperatorUsage {
+  const snapshot = snapshotSync(db, operatorId, now);
+  const counts = db
+    .prepare(
+      `SELECT
+         COALESCE(SUM(CASE WHEN state IN ('unsettled', 'settling') THEN 1 ELSE 0 END), 0) AS notYetChargedCalls,
+         COALESCE(SUM(CASE WHEN state = 'unsettled' THEN amount ELSE 0 END), 0) AS chargeable,
+         COALESCE(SUM(CASE WHEN state = 'unsettled' THEN 1 ELSE 0 END), 0) AS chargeableCalls,
+         COALESCE(SUM(CASE WHEN state = 'uncollectable' THEN amount ELSE 0 END), 0) AS notCollected,
+         COALESCE(SUM(CASE WHEN state = 'uncollectable' THEN 1 ELSE 0 END), 0) AS notCollectedCalls
+       FROM commitments WHERE operator_id = ?`,
+    )
+    .get(operatorId) as {
+    notYetChargedCalls: number;
+    chargeable: number;
+    chargeableCalls: number;
+    notCollected: number;
+    notCollectedCalls: number;
+  };
+  return {
+    spentToday: snapshot.spentToday,
+    notYetCharged: snapshot.unsettled,
+    spentTotal: snapshot.spentTotal,
+    notYetChargedCalls: counts.notYetChargedCalls,
+    chargeable: counts.chargeable,
+    chargeableCalls: counts.chargeableCalls,
+    notCollected: counts.notCollected,
+    notCollectedCalls: counts.notCollectedCalls,
+  };
+}
+
 /** Why the operator's agents are refused right now (web-app spec §5.3), or null. */
 export type BlockReason = 'wallet_not_active' | 'daily' | 'unsettled' | 'total';
 

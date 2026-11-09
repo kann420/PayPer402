@@ -186,6 +186,25 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX wallets_vault_id_hash ON wallets(vault_id_hash);
     `,
   },
+  {
+    // Claim codes for the operator CLI (operator-cli.md §5). Additive; no table is rebuilt.
+    version: 3,
+    sql: `
+      CREATE TABLE agent_claims (
+        id TEXT PRIMARY KEY,
+        operator_id TEXT NOT NULL REFERENCES operators(id),
+        code_hash TEXT NOT NULL UNIQUE,
+        agent_name TEXT NOT NULL,
+        seller_url TEXT NULL,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        redeemed_at INTEGER NULL,
+        agent_id TEXT NULL REFERENCES agents(id)
+      );
+
+      CREATE INDEX agent_claims_operator ON agent_claims(operator_id, expires_at);
+    `,
+  },
 ];
 
 export class DatabaseTooNewError extends Error {

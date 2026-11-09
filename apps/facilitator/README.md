@@ -35,6 +35,7 @@ The npm scripts load the root `.env` with Node's `--env-file-if-exists`; see the
 | `SETTLEMENT_TICK_SECONDS` | no | `15` | Job tick |
 | `WALLET_CHECK_INTERVAL_SECONDS` | no | `30` | Health check period per linked wallet |
 | `LOG_LEVEL` | no | `info` | `debug`, `info`, `warn` or `error` |
+| `FACILITATOR_TRUST_PROXY` | no | `0` | `1` keys the claim and status rate limits on the first `X-Forwarded-For` address. Set it behind a proxy, or every caller shares one bucket |
 
 ## Running
 
@@ -180,7 +181,9 @@ covered. Manual changes emit no live events; dashboards pick them up on their ne
 
 ## Known production gaps
 
-- **No rate limiting** on any route (out of scope for Phase 2).
+- **Rate limiting only on two routes:** `POST /v1/claims/redeem` (10 a minute per client, 300 an hour
+  in all) and `GET /v1/agent/status` (60 a minute per client), in process. Every other route is
+  unlimited.
 - **Single process.** The claim, the compare-and-set writes and the job scheduler assume one
   Node.js process over one SQLite file. Running several instances needs a shared database and a
   distributed lock for the jobs.

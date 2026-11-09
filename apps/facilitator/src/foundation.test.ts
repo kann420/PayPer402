@@ -86,7 +86,7 @@ describe('config', () => {
 describe('migrations', () => {
   it('creates the schema from empty, including the pending-settlement index', () => {
     const db = openDatabase(':memory:');
-    expect(runMigrations(db)).toBe(2);
+    expect(runMigrations(db)).toBe(3);
     const tables = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[]).map((r) => r.name);
     for (const table of ['operators', 'sellers', 'api_keys', 'wallets', 'agents', 'commitments', 'settlements', 'settlement_items', 'webhook_events', 'audit_log', 'schema_migrations']) {
       expect(tables).toContain(table);
@@ -108,8 +108,8 @@ describe('migrations', () => {
   it('is idempotent', () => {
     const db = openDatabase(':memory:');
     runMigrations(db);
-    expect(runMigrations(db)).toBe(2);
-    expect((db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get() as { n: number }).n).toBe(2);
+    expect(runMigrations(db)).toBe(3);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get() as { n: number }).n).toBe(3);
   });
 
   it('refuses a database newer than the code', () => {
@@ -123,8 +123,8 @@ describe('migrations', () => {
   it('rolls back a failing migration together with its version row', () => {
     const db = openDatabase(':memory:');
     runMigrations(db);
-    expect(() => runMigrations(db, [...MIGRATIONS, { version: 3, sql: 'CREATE TABLE t (x); SELECT * FROM missing;' }])).toThrow();
-    expect(schemaVersion(db)).toBe(2);
+    expect(() => runMigrations(db, [...MIGRATIONS, { version: 4, sql: 'CREATE TABLE t (x); SELECT * FROM missing;' }])).toThrow();
+    expect(schemaVersion(db)).toBe(3);
     expect(db.prepare(`SELECT name FROM sqlite_master WHERE name = 't'`).get()).toBeUndefined();
   });
 
@@ -146,7 +146,7 @@ describe('migrations', () => {
     const columns = db.prepare('PRAGMA table_info(wallets)').all();
     const before = db.prepare('SELECT * FROM wallets ORDER BY operator_id').all();
 
-    expect(runMigrations(db)).toBe(2);
+    expect(runMigrations(db)).toBe(3);
     expect(db.prepare('SELECT * FROM wallets ORDER BY operator_id').all()).toEqual(before);
     expect(db.prepare('PRAGMA table_info(wallets)').all()).toEqual(columns);
     expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
@@ -160,7 +160,7 @@ describe('migrations', () => {
     expect(() => insertWallet.run('op_missing', 'not_linked', null, null, null, null, null, null, null, null, null, null, null, null, 1)).toThrow(/FOREIGN KEY/);
 
     // A newer database is still refused.
-    db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (3, 0)').run();
+    db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (4, 0)').run();
     expect(() => runMigrations(db)).toThrow(DatabaseTooNewError);
   });
 });

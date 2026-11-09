@@ -22,6 +22,8 @@ export interface Config {
   adminApiKey?: string;
   settlementTickSeconds: number;
   walletCheckIntervalSeconds: number;
+  /** Whether the rate limits key on the first `X-Forwarded-For` address (operator-cli.md §9.3). */
+  trustProxy: boolean;
   logLevel: LogLevel;
 }
 
@@ -83,6 +85,7 @@ const schema = z.object({
   SETTLEMENT_TICK_SECONDS: positiveInt(15),
   WALLET_CHECK_INTERVAL_SECONDS: positiveInt(30),
   LOG_LEVEL: optionalString.pipe(z.enum(['debug', 'info', 'warn', 'error']).optional()),
+  FACILITATOR_TRUST_PROXY: optionalString.pipe(z.enum(['0', '1']).optional()),
 });
 
 export class ConfigError extends Error {
@@ -119,6 +122,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     ...(e.ADMIN_API_KEY === undefined ? {} : { adminApiKey: e.ADMIN_API_KEY }),
     settlementTickSeconds: e.SETTLEMENT_TICK_SECONDS,
     walletCheckIntervalSeconds: e.WALLET_CHECK_INTERVAL_SECONDS,
+    trustProxy: e.FACILITATOR_TRUST_PROXY === '1',
     logLevel: e.LOG_LEVEL ?? 'info',
   };
 }

@@ -1,6 +1,7 @@
-import express, { type Express } from 'express';
+import express, { type Express, type Request } from 'express';
 import { x402Facilitator } from '@x402/core/facilitator';
 import { PAYPAL_SANDBOX_NETWORK, PayPalBatchFacilitatorScheme } from '@payper402/scheme-paypal';
+import { agentAuth } from './agent-auth';
 import { authenticate } from './auth';
 import type { Config } from './config';
 import { SecretBox } from './crypto';
@@ -10,8 +11,11 @@ import { errorHandler, notFoundHandler, requestId } from './http';
 import { createJobs, type Jobs } from './jobs';
 import type { Logger } from './logger';
 import type { PayPalGateway } from './paypal';
+import { clientKey, HOUR_MS, MINUTE_MS, rateLimit, SlidingWindow } from './rate-limit';
 import { adminRoutes } from './routes/admin';
+import { agentStatusRoutes } from './routes/agent-status';
 import { agentRoutes } from './routes/agents';
+import { claimRoutes } from './routes/claims';
 import { DEFAULT_KEEPALIVE_MS, eventsHandler } from './routes/events';
 import { operatorRoutes } from './routes/operator';
 import { paypalRoutes } from './routes/paypal';
@@ -36,6 +40,8 @@ export interface AppDeps {
   logger: Logger;
   /** SSE keepalive period; tests shorten it. */
   sseKeepaliveMs?: number;
+  /** Milliseconds, for the rate limits. Defaults to `Date.now`; tests move it. */
+  rateClock?: () => number;
 }
 
 export interface Services {
@@ -127,9 +133,21 @@ export function createApp(deps: AppDeps, services: Services = createServices(dep
   const either = authenticate(db, config.apiKeyPepper, clock, ['operator', 'seller']);
   const reads = readRoutes(ctx, settlements);
 
+  // In-process rate limits for the two unauthenticated-by-key endpoints (operator-cli.md §9.3).
+  const rateNow = deps.rateClock ?? Date.now;
+  const client = (req: Request) => clientKey(req, config.trustProxy);
+  const redeemLimit = rateLimit([
+    [new SlidingWindow(10, MINUTE_MS, rateNow), client],
+    [new SlidingWindow(300, HOUR_MS, rateNow), () => 'all'],
+  ]);
+  const statusLimit = rateLimit([[new SlidingWindow(60, MINUTE_MS, rateNow), client]]);
+
   app.use('/x402', seller, x402Routes(services.facilitator));
   app.use('/v1/operator', operator, operatorRoutes(ctx, wallets));
   app.use('/v1/agents', operator, agentRoutes(ctx, wallets));
+  // Outside `/v1/agents`, which puts operator authentication on every path below it.
+  app.use('/v1/claims', redeemLimit, claimRoutes(ctx));
+  app.use('/v1/agent', statusLimit, agentAuth(db, clock, deps.logger), agentStatusRoutes(ctx, wallets));
   app.use('/v1/commitments', operator, reads.commitments);
   app.use('/v1/settlements', operator, reads.settlements);
   app.use('/v1/seller', seller, sellerRoutes(ctx));

@@ -3,6 +3,7 @@ import { exportPrivateKeyJwk, generateAgentKey, kidFromPublicKeyX } from '@paype
 import { z } from 'zod';
 import { recordAudit } from '../audit';
 import { authOf } from '../auth';
+import { CLAIM_TTL_SECONDS, claimCodeHash, generateClaimCode, MAX_OPEN_CLAIMS } from '../claims';
 import { randomId } from '../crypto';
 import type { AgentRow } from '../db/rows';
 import { conflict, HttpError, notFound, parse } from '../http';
@@ -21,6 +22,64 @@ const createSchema = z.strictObject({
 const patchSchema = z
   .strictObject({ name: nameSchema.optional(), status: z.enum(['active', 'paused']).optional() })
   .refine((body) => body.name !== undefined || body.status !== undefined, 'Nothing to update');
+
+const sellerUrlSchema = z
+  .string()
+  .max(300)
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }, 'sellerUrl must be an absolute http(s) URL')
+  .transform((value) => value.replace(/\/+$/, ''));
+
+const claimSchema = z.strictObject({ name: nameSchema, sellerUrl: sellerUrlSchema.optional() });
+
+/** The key id of a raw public key, or a 400 with the `publicKeyX` issue (shared by agent creation and claim redemption). */
+export function kidOrThrow(publicKeyX: string): string {
+  try {
+    return kidFromPublicKeyX(publicKeyX);
+  } catch {
+    throw new HttpError(400, 'validation_failed', 'The request is invalid', [
+      { path: 'publicKeyX', message: 'publicKeyX must be a raw Ed25519 public key (32 bytes, base64url)' },
+    ]);
+  }
+}
+
+/**
+ * Inserts an active agent and writes its `agent.created` audit record (operator-cli.md §3.4 step 5).
+ * Used by `POST /v1/agents` and by claim redemption, so the two cannot drift apart. The caller
+ * emits `agent.updated`: after its own commit, when it runs in a transaction. Throws 409
+ * `agent_key_exists` when the key is already registered.
+ */
+export function insertAgent(
+  ctx: ServiceContext,
+  input: { operatorId: string; name: string; kid: string; publicKeyX: string; auditDetails: Record<string, unknown> },
+): string {
+  if (ctx.db.prepare('SELECT 1 FROM agents WHERE kid = ?').get(input.kid)) {
+    throw conflict('agent_key_exists', 'An agent with this key already exists');
+  }
+  const now = ctx.clock();
+  const id = randomId('agt');
+  ctx.db
+    .prepare(
+      `INSERT INTO agents (id, operator_id, name, kid, public_key_x, status, created_at)
+       VALUES (?, ?, ?, ?, ?, 'active', ?)`,
+    )
+    .run(id, input.operatorId, input.name, input.kid, input.publicKeyX, now);
+  recordAudit(ctx.db, ctx.logger, now, {
+    actorType: 'operator',
+    actorId: input.operatorId,
+    action: 'agent.created',
+    resourceType: 'agent',
+    resourceId: id,
+    details: input.auditDetails,
+  });
+  return id;
+}
 
 /** `/v1/agents` (design spec §7.2, §7.4). */
 export function agentRoutes(ctx: ServiceContext, wallets: WalletService): Router {
@@ -49,13 +108,7 @@ export function agentRoutes(ctx: ServiceContext, wallets: WalletService): Router
     let kid: string;
     let privateKeyJwk: ReturnType<typeof exportPrivateKeyJwk> | undefined;
     if (body.publicKeyX !== undefined) {
-      try {
-        kid = kidFromPublicKeyX(body.publicKeyX);
-      } catch {
-        throw new HttpError(400, 'validation_failed', 'The request is invalid', [
-          { path: 'publicKeyX', message: 'publicKeyX must be a raw Ed25519 public key (32 bytes, base64url)' },
-        ]);
-      }
+      kid = kidOrThrow(body.publicKeyX);
       publicKeyX = body.publicKeyX;
     } else {
       const key = generateAgentKey();
@@ -63,28 +116,55 @@ export function agentRoutes(ctx: ServiceContext, wallets: WalletService): Router
       kid = key.kid;
       privateKeyJwk = exportPrivateKeyJwk(key.privateKey);
     }
-    if (ctx.db.prepare('SELECT 1 FROM agents WHERE kid = ?').get(kid)) {
-      throw conflict('agent_key_exists', 'An agent with this key already exists');
-    }
-    const now = ctx.clock();
-    const id = randomId('agt');
-    ctx.db
-      .prepare(
-        `INSERT INTO agents (id, operator_id, name, kid, public_key_x, status, created_at)
-         VALUES (?, ?, ?, ?, ?, 'active', ?)`,
-      )
-      .run(id, operatorId, body.name, kid, publicKeyX, now);
-    recordAudit(ctx.db, ctx.logger, now, {
-      actorType: 'operator',
-      actorId: operatorId,
-      action: 'agent.created',
-      resourceType: 'agent',
-      resourceId: id,
-      details: { generatedKey: privateKeyJwk !== undefined },
+    const id = insertAgent(ctx, {
+      operatorId,
+      name: body.name,
+      kid,
+      publicKeyX,
+      auditDetails: { generatedKey: privateKeyJwk !== undefined },
     });
     ctx.events.emit({ type: 'agent.updated', operatorId, data: { id, status: 'active' } });
     const agent = agentView(loadAgent(operatorId, id));
     res.status(201).json(privateKeyJwk ? { agent, privateKeyJwk } : { agent });
+  });
+
+  /** `POST /v1/agents/claims` (operator-cli.md §3.3). The code appears only in this response. */
+  router.post('/claims', (req, res) => {
+    const operatorId = authOf(res).ownerId;
+    const body = parse(claimSchema, req.body);
+    const code = generateClaimCode();
+    const issue = ctx.db
+      .transaction(() => {
+        loadOperator(ctx, operatorId);
+        const now = ctx.clock();
+        const open = (
+          ctx.db
+            .prepare('SELECT COUNT(*) AS n FROM agent_claims WHERE operator_id = ? AND redeemed_at IS NULL AND expires_at > ?')
+            .get(operatorId, now) as { n: number }
+        ).n;
+        if (open >= MAX_OPEN_CLAIMS) {
+          throw conflict('too_many_claims', 'Too many unused claim codes. Use one or wait for them to expire.');
+        }
+        const id = randomId('clm');
+        const expiresAt = now + CLAIM_TTL_SECONDS;
+        ctx.db
+          .prepare(
+            `INSERT INTO agent_claims (id, operator_id, code_hash, agent_name, seller_url, created_at, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(id, operatorId, claimCodeHash(ctx.config.apiKeyPepper, code.normalised), body.name, body.sellerUrl ?? null, now, expiresAt);
+        recordAudit(ctx.db, ctx.logger, now, {
+          actorType: 'operator',
+          actorId: operatorId,
+          action: 'agent.claim_issued',
+          resourceType: 'agent_claim',
+          resourceId: id,
+          details: { name: body.name },
+        });
+        return { id, expiresAt };
+      })
+      .immediate();
+    res.status(201).json({ claim: { id: issue.id, code: code.display, name: body.name, expiresAt: issue.expiresAt } });
   });
 
   router.get('/', (_req, res) => {
