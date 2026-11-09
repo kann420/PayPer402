@@ -38,3 +38,7 @@ next-env.d.ts
 # Local scratch and generated decks
 tmp/
 output/
+
+# Local agent tool config
+.codex/
+.claude/
