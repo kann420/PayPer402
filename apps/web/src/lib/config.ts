@@ -44,6 +44,25 @@ const url = (fallback: string) =>
   );
 
 const optional = z.preprocess(blankToUndefined, z.string().trim().optional());
+
+/** Like `url`, with no default: the caller falls back to another variable. */
+const optionalUrl = z.preprocess(
+  blankToUndefined,
+  z
+    .string()
+    .trim()
+    .refine((value) => {
+      try {
+        const u = new URL(value);
+        return u.protocol === 'http:' || u.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }, 'must be an http(s) URL')
+    .transform((value) => value.replace(/\/+$/, ''))
+    .optional(),
+);
+
 const limit = (fallback: number) => z.preprocess(blankToUndefined, z.coerce.number().int().min(0).max(1_000_000).default(fallback));
 
 const schema = z.object({
@@ -64,6 +83,10 @@ const schema = z.object({
   WEB_LIMIT_RUNS_PER_HOUR: limit(60),
   WEB_LIMIT_AI_TURNS_PER_HOUR: limit(120),
   WEB_LIMIT_AI_TURNS_PER_DAY: limit(2000),
+  WEB_LIMIT_CLAIMS_PER_HOUR: limit(10),
+  // Phase 4.5: they default to FACILITATOR_URL and SELLER_URL, which are resolved in `parseWebConfig`.
+  FACILITATOR_PUBLIC_URL: optionalUrl,
+  SELLER_PUBLIC_URL: optionalUrl,
 });
 
 export interface WebConfig {
@@ -72,6 +95,10 @@ export interface WebConfig {
   secure: boolean;
   facilitatorUrl: string;
   sellerUrl: string;
+  /** The facilitator URL shown in the `payper402 onboard` command (operator-cli.md §8.1). */
+  facilitatorPublicUrl: string;
+  /** The seller URL stored with each claim code (operator-cli.md §8.1). */
+  sellerPublicUrl: string;
   adminKey: string | undefined;
   sellerKey: string | undefined;
   /** 32 bytes; undefined when unset (the session routes then answer 503). */
@@ -88,6 +115,7 @@ export interface WebConfig {
     runsPerHour: number;
     aiTurnsPerHour: number;
     aiTurnsPerDay: number;
+    claimsPerHour: number;
   };
 }
 
@@ -102,6 +130,8 @@ export function parseWebConfig(env: Record<string, string | undefined>): WebConf
     secure: origin.protocol === 'https:',
     facilitatorUrl: e.FACILITATOR_URL,
     sellerUrl: e.SELLER_URL,
+    facilitatorPublicUrl: e.FACILITATOR_PUBLIC_URL ?? e.FACILITATOR_URL,
+    sellerPublicUrl: e.SELLER_PUBLIC_URL ?? e.SELLER_URL,
     adminKey: e.FACILITATOR_ADMIN_KEY,
     sellerKey: e.WEB_SELLER_API_KEY,
     sessionSecret: e.WEB_SESSION_SECRET === undefined ? undefined : Buffer.from(e.WEB_SESSION_SECRET, 'hex'),
@@ -117,6 +147,7 @@ export function parseWebConfig(env: Record<string, string | undefined>): WebConf
       runsPerHour: e.WEB_LIMIT_RUNS_PER_HOUR,
       aiTurnsPerHour: e.WEB_LIMIT_AI_TURNS_PER_HOUR,
       aiTurnsPerDay: e.WEB_LIMIT_AI_TURNS_PER_DAY,
+      claimsPerHour: e.WEB_LIMIT_CLAIMS_PER_HOUR,
     },
   };
 }

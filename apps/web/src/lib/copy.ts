@@ -6,6 +6,7 @@ export const ERROR_COPY: Record<string, string> = {
   wallet_already_active: 'Your PayPal account is already linked.',
   settlement_failed: 'The final charge was declined, so your PayPal account stays linked. Try again later.',
   paypal_unavailable: "PayPal didn't answer. Try again in a moment.",
+  too_many_claims: 'You have 5 unused codes. Use one or wait for them to expire.',
   seller_unavailable: "The seller console isn't available right now.",
 };
 

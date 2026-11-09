@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { errorCopy } from '@/lib/copy';
 import { agentNameError, envFile, jwkFile } from '@/lib/key-files';
 import { callApi, handleEnded } from '../shell/session-client';
 import { AgentSnippet, EnvSnippet } from '../ui/code';
+import type { ClaimInfo } from './claim-panel';
 import { useToast } from '../ui/toast';
 
 export interface CreatedKey {
@@ -97,8 +99,19 @@ function DownloadIcon() {
   );
 }
 
-/** Step one: the name field and "Create agent" (design spec §10.5, §10.8). */
-export function AgentNameForm({ initialName = '', onCreated }: { initialName?: string; onCreated: (created: CreatedKey) => void }) {
+/**
+ * Step one: the name field and "Create agent" (design spec §10.5, §10.8). With `onClaim`, a second
+ * button, "Connect from a terminal", asks for a claim code instead (operator-cli.md §8.3).
+ */
+export function AgentNameForm({
+  initialName = '',
+  onCreated,
+  onClaim,
+}: {
+  initialName?: string;
+  onCreated: (created: CreatedKey) => void;
+  onClaim?: (info: ClaimInfo) => void;
+}) {
   const toast = useToast();
   const [name, setName] = useState(initialName);
   const [touched, setTouched] = useState(false);
@@ -106,21 +119,25 @@ export function AgentNameForm({ initialName = '', onCreated }: { initialName?: s
   const [serverError, setServerError] = useState<string | undefined>(undefined);
   const error = touched || name !== '' ? agentNameError(name) : undefined;
 
-  const create = async () => {
+  /** Validates the name, posts it, and maps a failure to the field or a toast. */
+  const submit = async <T extends Record<string, unknown>>(path: string, done: (res: { ok: true } & T) => void) => {
     setTouched(true);
     if (agentNameError(name) !== undefined || busy) return;
     setBusy(true);
     setServerError(undefined);
-    const res = await callApi<{ agent: CreatedKey['agent']; key: CreatedKey['key'] }>('/api/operator/agents', { name });
+    const res = await callApi<T>(path, { name });
     setBusy(false);
     if (!res.ok) {
       if (handleEnded(res)) return;
       if (res.error === 'validation_failed') setServerError(res.message);
-      else toast({ text: res.message, icon: 'error' });
+      else toast({ text: errorCopy(res.error, res.message), icon: 'error' });
       return;
     }
-    onCreated({ agent: res.agent, key: res.key });
+    done(res);
   };
+  const create = () =>
+    submit<{ agent: CreatedKey['agent']; key: CreatedKey['key'] }>('/api/operator/agents', (res) => onCreated({ agent: res.agent, key: res.key }));
+  const claim = () => submit<ClaimInfo>('/api/operator/agents/claims', (res) => onClaim?.({ claim: res.claim, command: res.command }));
 
   const shown = serverError ?? error;
   return (
@@ -158,6 +175,18 @@ export function AgentNameForm({ initialName = '', onCreated }: { initialName?: s
       <button type="submit" disabled={busy} className="mb-6 h-12 rounded-[10px] border-0 bg-ink-950 px-[18px] font-semibold text-white disabled:opacity-70">
         {busy ? 'Creating…' : 'Create agent'}
       </button>
+      {onClaim !== undefined && (
+        <div className="w-full">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void claim()}
+            className="h-12 rounded-[10px] border-[1.5px] border-ink-950 bg-white px-[18px] font-semibold text-ink-950 disabled:opacity-70"
+          >
+            Connect from a terminal
+          </button>
+        </div>
+      )}
     </form>
   );
 }

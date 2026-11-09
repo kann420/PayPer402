@@ -13,6 +13,7 @@ import { Drawer } from '../ui/drawer';
 import { StatusBadge } from '../ui/status-badge';
 import { useToast } from '../ui/toast';
 import { AgentNameForm, KeyPanel, type CreatedKey } from './agent-creator';
+import { ClaimPanel, type ClaimInfo } from './claim-panel';
 
 export interface AgentListItem {
   id: string;
@@ -48,15 +49,24 @@ export function usePauseToggle(): (id: string, next: 'active' | 'paused') => Pro
 export function NewAgentDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
   const [created, setCreated] = useState<CreatedKey | null>(null);
+  const [claim, setClaim] = useState<ClaimInfo | null>(null);
   const close = () => {
     setCreated(null);
+    setClaim(null);
     onClose();
     router.refresh();
   };
   return (
     <Drawer open={open} title="New agent" onClose={close}>
-      {created === null ? (
-        <AgentNameForm onCreated={setCreated} />
+      {claim !== null ? (
+        <>
+          <ClaimPanel info={claim} />
+          <button type="button" className={`${btn.primary} self-start`} onClick={close}>
+            Done
+          </button>
+        </>
+      ) : created === null ? (
+        <AgentNameForm onCreated={setCreated} onClaim={setClaim} />
       ) : (
         <>
           <KeyPanel created={created} />

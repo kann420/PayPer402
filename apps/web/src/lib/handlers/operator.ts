@@ -4,8 +4,9 @@ import { z } from 'zod';
 import { createAgent } from '../agents';
 import { AGENT_NAME_MESSAGE, AGENT_NAME_PATTERN } from '../key-files';
 import { sessionKey, type WebDeps } from '../deps';
+import { SlidingWindow } from '../limits';
 import { MAX_CAP_CENTS } from '../caps-form';
-import { checkOrigin, errorResponse, json, readBody, requireOperator, withCookie } from './common';
+import { checkOrigin, errorResponse, json, readBody, requireOperator, RouteError, withCookie } from './common';
 
 const emptyBody = z.union([z.undefined(), z.strictObject({})]);
 const cents = z.number().int().min(0).max(MAX_CAP_CENTS);
@@ -13,6 +14,7 @@ const capsBody = z.strictObject({ perCall: cents, daily: cents, unsettled: cents
 const agentBody = z.strictObject({ name: z.string().regex(AGENT_NAME_PATTERN, AGENT_NAME_MESSAGE) });
 const patchBody = z.strictObject({ status: z.enum(['active', 'paused']) });
 
+export const CLAIM_LIMIT_MESSAGE = 'Too many claim codes right now. Try again later.';
 
 /** Wraps a state-changing operator route: origin check, operator session, error mapping. */
 function operatorRoute(fn: (args: { deps: WebDeps; request: Request; session: ReturnType<typeof requireOperator>; key: Buffer }) => Promise<Response>) {
@@ -75,3 +77,24 @@ export function createPatchAgentHandler(deps: WebDeps): (request: Request, id: s
     })(deps)(request);
 }
 
+
+/**
+ * `POST /api/operator/agents/claims` (operator-cli.md §8.2): a claim code for `payper402 onboard`.
+ * The web app never holds a key for these agents, so the session cookie is not touched.
+ */
+export const createClaimHandler = operatorRoute(async ({ deps, request, session }) => {
+  const body = await readBody(request, agentBody);
+  // The hit comes before the facilitator call, so an upstream 409 still counts.
+  const limits = deps.limits;
+  if (!SlidingWindow.take([[limits.claimsPerOperator, session.operator.id]])) {
+    throw new RouteError(429, 'claim_limit', CLAIM_LIMIT_MESSAGE);
+  }
+  const { claim } = await deps.facilitator.operator(session.operator.key).createClaim({ name: body.name, sellerUrl: deps.config.sellerPublicUrl });
+  return json(
+    {
+      claim: { code: claim.code, name: claim.name, expiresAt: claim.expiresAt },
+      command: `payper402 onboard --claim ${claim.code} --api ${deps.config.facilitatorPublicUrl}`,
+    },
+    { status: 201 },
+  );
+});

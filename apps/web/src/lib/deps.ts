@@ -17,6 +17,7 @@ export interface Limits {
   aiPerSession: SlidingWindow;
   aiAll: SlidingWindow;
   probesPerClient: SlidingWindow;
+  claimsPerOperator: SlidingWindow;
 }
 
 export interface WebDeps {
@@ -38,6 +39,7 @@ export function createLimits(config: WebConfig, now: () => number = Date.now): L
     aiPerSession: new SlidingWindow(l.aiTurnsPerHour, HOUR, now),
     aiAll: new SlidingWindow(l.aiTurnsPerDay, DAY, now),
     probesPerClient: new SlidingWindow(30, MINUTE, now),
+    claimsPerOperator: new SlidingWindow(l.claimsPerHour, HOUR, now),
   };
 }
 

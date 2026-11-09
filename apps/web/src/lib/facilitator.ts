@@ -149,6 +149,9 @@ export const sellerSettlementSchema = z.object({
 });
 export type SellerSettlement = z.output<typeof sellerSettlementSchema>;
 
+export const claimSchema = z.object({ id: z.string(), code: z.string(), name: z.string(), expiresAt: unix });
+export type Claim = z.output<typeof claimSchema>;
+
 export const demoOperatorSchema = z.object({ operator: z.object({ id: z.string(), name: z.string() }), apiKey: z.string() });
 
 const issuesSchema = z.array(z.object({ path: z.string(), message: z.string() }));
@@ -308,6 +311,8 @@ export class FacilitatorClient {
       agents: () => call(z.object({ agents: z.array(agentWithUsageSchema) }), 'GET', '/v1/agents'),
       agent: (id: string) => call(z.object({ agent: agentWithUsageSchema }), 'GET', `/v1/agents/${encodeURIComponent(id)}`),
       createAgent: (body: { name: string; publicKeyX: string }) => call(z.object({ agent: agentSchema }), 'POST', '/v1/agents', { body }),
+      createClaim: (body: { name: string; sellerUrl: string }) =>
+        call(z.object({ claim: claimSchema }), 'POST', '/v1/agents/claims', { body }),
       patchAgent: (id: string, body: { status: 'active' | 'paused' }) =>
         call(z.object({ agent: agentWithUsageSchema }), 'PATCH', `/v1/agents/${encodeURIComponent(id)}`, { body }),
       commitments: (query: { since?: number; before?: number; limit?: number; agentId?: string }) =>

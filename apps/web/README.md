@@ -68,6 +68,9 @@ and at the next charge.
 | `WEB_LIMIT_RUNS_PER_HOUR` | no | 60 | Agent runs per hour, all operators together |
 | `WEB_LIMIT_AI_TURNS_PER_HOUR` | no | 120 | AI assistant turns per browser session per hour |
 | `WEB_LIMIT_AI_TURNS_PER_DAY` | no | 2000 | AI assistant turns per day, all sessions together |
+| `WEB_LIMIT_CLAIMS_PER_HOUR` | no | 10 | Claim codes (`payper402 onboard`) per demo operator per hour |
+| `FACILITATOR_PUBLIC_URL` | no | `FACILITATOR_URL` | The facilitator URL shown in the `payper402 onboard` command |
+| `SELLER_PUBLIC_URL` | no | `SELLER_URL` | The seller URL stored with each claim code |
 
 A missing required variable makes the routes that need it answer 503, with a log line that names
 the variable and never its value.
@@ -99,6 +102,7 @@ the variable and never its value.
 | `PUT /api/operator/caps` | Limits |
 | `POST /api/operator/settlements` | "Charge now" |
 | `POST /api/operator/agents`, `PATCH /api/operator/agents/[id]` | Create, pause and resume agents |
+| `POST /api/operator/agents/claims` | A claim code and the `payper402 onboard` command ("Connect from a terminal") |
 | `POST /api/runs` | Runs the demo agent and streams its timeline (SSE) |
 | `POST /api/ai/turn?scope=…` | One AI assistant turn (AG Studio's LLM adapter) |
 | `GET /api/seller/probe/[serviceId]` | "Test it": one unpaid request to the demo seller |
