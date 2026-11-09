@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+.git
+.env
+.env.*
+!.env.example
+data
+tmp
+output
+.claude
+.codex
+**/*.db
+**/*.key
+**/*.pem

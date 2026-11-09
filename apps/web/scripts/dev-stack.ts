@@ -34,6 +34,18 @@ const FACILITATOR_URL = `http://localhost:${FACILITATOR_PORT}`;
 const SELLER_URL = `http://localhost:${SELLER_PORT}`;
 const KEY_LABEL = 'dev-stack';
 
+/**
+ * Public origins. Locally they equal the localhost URLs above. On a host, set WEB_PUBLIC_URL,
+ * PUBLIC_BASE_URL (the facilitator) and SELLER_PUBLIC_URL to the public HTTPS origins; the three
+ * servers still talk to each other over localhost.
+ */
+function publicUrl(name: string, fallback: string): string {
+  return (process.env[name]?.trim() || fallback).replace(/\/+$/, '');
+}
+const PUBLIC_WEB_URL = publicUrl('WEB_PUBLIC_URL', WEB_URL);
+const PUBLIC_FACILITATOR_URL = publicUrl('PUBLIC_BASE_URL', FACILITATOR_URL);
+const PUBLIC_SELLER_URL = publicUrl('SELLER_PUBLIC_URL', SELLER_URL);
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webDir = path.resolve(here, '..');
 const repoRoot = path.resolve(webDir, '../..');
@@ -156,8 +168,8 @@ async function main(): Promise<void> {
     config = loadConfig({
       ...process.env,
       PORT: String(FACILITATOR_PORT),
-      PUBLIC_BASE_URL: FACILITATOR_URL,
-      WEB_APP_URL: WEB_URL,
+      PUBLIC_BASE_URL: PUBLIC_FACILITATOR_URL,
+      WEB_APP_URL: PUBLIC_WEB_URL,
       DATABASE_PATH: databasePath,
       ADMIN_API_KEY: adminKey,
       LOG_LEVEL: process.env['LOG_LEVEL']?.trim() || 'warn',
@@ -181,6 +193,7 @@ async function main(): Promise<void> {
     const model = process.env['ANTHROPIC_MODEL']?.trim() || 'claude-opus-5-5';
     state.seller = await startSeller({
       port: SELLER_PORT,
+      publicUrl: PUBLIC_SELLER_URL,
       facilitatorUrl: FACILITATOR_URL,
       sellerApiKey: state.sellerKey,
       ai: createClaudeSellerAi(new Anthropic({ timeout: SELLER_AI_TIMEOUT_MS, maxRetries: 0 }), model),
@@ -203,7 +216,9 @@ async function main(): Promise<void> {
       FACILITATOR_ADMIN_KEY: adminKey,
       WEB_SELLER_API_KEY: state.sellerKey,
       SELLER_URL,
-      WEB_PUBLIC_URL: WEB_URL,
+      WEB_PUBLIC_URL: PUBLIC_WEB_URL,
+      FACILITATOR_PUBLIC_URL: process.env['FACILITATOR_PUBLIC_URL']?.trim() || PUBLIC_FACILITATOR_URL,
+      SELLER_PUBLIC_URL: PUBLIC_SELLER_URL,
       WEB_SESSION_SECRET: session.secret,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
