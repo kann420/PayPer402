@@ -12,6 +12,7 @@
   "scripts": {
     "agent": "tsx --env-file-if-exists=../../.env src/cli.ts",
     "mcp": "tsx --env-file-if-exists=../../.env src/mcp.ts",
+    "payper402": "tsx --env-file-if-exists=../../.env src/payper402.ts",
     "demo": "tsx --env-file-if-exists=../../.env scripts/demo.ts",
     "eval:spend-check": "tsx --env-file-if-exists=../../.env scripts/eval-spend-check.ts",
     "typecheck": "tsc -p tsconfig.json"

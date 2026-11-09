@@ -13,10 +13,14 @@
   "engines": {
     "node": ">=22"
   },
+  "bin": {
+    "payper402": "apps/agent/bin/payper402.mjs"
+  },
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "demo": "npm run demo -w apps/agent --",
+    "payper402": "npm run --silent payper402 -w apps/agent --",
     "dev:stack": "npm run dev:stack -w apps/web --",
     "test:watch": "vitest"
   },

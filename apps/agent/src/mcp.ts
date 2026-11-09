@@ -1,8 +1,9 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type CallToolResult, type Tool } from '@modelcontextprotocol/sdk/types.js';
 import { CatalogError } from './catalog';
-import { ConfigError, loadAgentConfig } from './config';
+import { ConfigError, loadAgentConfig, type AgentConfig } from './config';
 import { formatEvent } from './format';
 import { openSession, type AgentSession } from './session';
 import { createToolCore } from './tools';
@@ -54,6 +55,36 @@ export function createMcpServer(session: AgentSession, options: McpServerOptions
   return server;
 }
 
+/** The result of starting the stdio server: the running server, or the one-line reason it could not start. */
+export type McpStart = { ok: true; server: Server; session: AgentSession } | { ok: false; message: string };
+
+/**
+ * The start-up steps shared by `npm run mcp` and `payper402 mcp` (design spec §8): opens the
+ * session, connects the server to a transport (stdio unless a test passes one) and logs the ready
+ * line. It writes nothing to stdout itself.
+ */
+export async function startMcpStdio(
+  config: AgentConfig,
+  log: (line: string) => void = stderrLog,
+  transport: Transport = new StdioServerTransport(),
+): Promise<McpStart> {
+  let session: AgentSession;
+  try {
+    session = await openSession({
+      sellerUrl: config.sellerUrl,
+      privateKey: config.privateKey,
+      budgetCents: config.budgetCents,
+      maxPerCallCents: config.maxPerCallCents,
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof CatalogError ? err.message : 'Could not open the session' };
+  }
+  const server = createMcpServer(session, { log });
+  await server.connect(transport);
+  log(`PayPer402 MCP server ready: ${session.catalog.seller.name}, ${session.catalog.services.length} services`);
+  return { ok: true, server, session };
+}
+
 /** The stdio entry: the CLI's environment, with `AGENT_BUDGET` as the budget for the process. */
 async function main(): Promise<void> {
   let config;
@@ -64,22 +95,11 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  let session;
-  try {
-    session = await openSession({
-      sellerUrl: config.sellerUrl,
-      privateKey: config.privateKey,
-      budgetCents: config.budgetCents,
-      maxPerCallCents: config.maxPerCallCents,
-    });
-  } catch (err) {
-    stderrLog(err instanceof CatalogError ? err.message : 'Could not open the session');
+  const started = await startMcpStdio(config, stderrLog);
+  if (!started.ok) {
+    stderrLog(started.message);
     process.exitCode = 1;
-    return;
   }
-  const server = createMcpServer(session);
-  await server.connect(new StdioServerTransport());
-  stderrLog(`PayPer402 MCP server ready: ${session.catalog.seller.name}, ${session.catalog.services.length} services`);
 }
 
 const entry = process.argv[1]?.replace(/\\/g, '/') ?? '';

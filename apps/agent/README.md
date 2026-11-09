@@ -116,6 +116,13 @@ Claude Desktop (`claude_desktop_config.json`; placeholders):
 }
 ```
 
+## The `payper402` command
+
+`payper402 mcp` and `payper402 run` wrap the MCP server and the CLI above with the identity in the
+`payper402 onboard` config file. `npm run agent` and `npm run mcp` are unchanged and read only the
+environment. See "Use PayPer402 from a terminal" in the [root README](../../README.md) and
+[docs/spec/operator-cli.md](../../docs/spec/operator-cli.md).
+
 ## The demo command
 
 ```bash
