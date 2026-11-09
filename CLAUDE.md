@@ -52,6 +52,10 @@ In scope:
 - A **decision layer** (Phase 3.5, added at the user's request on 2026-10-16). Before the agent
   pays, Jev (TypeSafe) gives a calibrated second opinion on the call, and code decides. It is a
   supporting feature, never the headline. See `docs/spec/decision-layer.md`.
+- An **operator CLI** (Phase 4.5, added at the user's request on 2026-10-27): the `payper402`
+  command. It joins an agent with a claim code from the web app (the key is generated locally),
+  shows the agent's status, and runs the MCP server and the agent. Operator powers (linking,
+  caps, unlinking) stay in the web app. See `docs/spec/operator-cli.md`.
 - Dashboards (AG Studio):
   - operator view: spend per agent, per API, and per day
   - seller view: revenue per endpoint and settlement status

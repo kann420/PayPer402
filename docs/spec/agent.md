@@ -803,6 +803,10 @@ At the end, `runAgent` emits `result` with the status, the answer and `session.r
 
 The seller and the facilitator must already be running (§9 starts everything together).
 
+**Phase 4.5:** the `payper402 run` command (operator-cli.md §6.6) calls this CLI with the key and
+seller URL from its config file. This entry, `npm run agent`, is unchanged and still reads only
+the environment.
+
 ## 8. MCP server
 
 **What `@x402/mcp` covers.** `@x402/mcp` 2.28.0 was checked. It provides:
@@ -832,6 +836,10 @@ over the tool core of §5. `@x402/mcp` is not a dependency.
 - **Annotations:**
   - `call_service`: `readOnlyHint: false`, `openWorldHint: true`. It spends money.
   - The other two tools: `readOnlyHint: true`.
+
+**Phase 4.5:** `payper402 mcp` (operator-cli.md §6.5) runs this server with the key and seller
+URL from its config file. The start-up steps are shared with `src/mcp.ts`. This entry,
+`npm run mcp`, is unchanged, and the tools stay exactly these three.
 
 ## 9. Demo command
 
@@ -954,6 +962,9 @@ The demo never prints API keys, the agent private key, vault ids or payment head
 
 ## Change notes
 
+- **Phase 4.5 amendment (2026-10-27), operator CLI ([operator-cli.md](operator-cli.md) §6):** §7
+  and §8 gain notes on the `payper402` command, which wraps them with a config file. The existing
+  entries, tools and behaviour are unchanged.
 - **Phase 4, after the build (2026-10-17):** in Phase 4's real run the spend explanation still
   came back in the task's language, so §5's `finish` description of `spend_explanation` now
   says "in English" too. `FINISH_SCHEMA` matches.

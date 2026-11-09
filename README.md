@@ -66,6 +66,78 @@ PayPal sandbox credentials, `DATA_ENCRYPTION_KEY`, `API_KEY_PEPPER` and Anthropi
 `.env`. See [apps/agent/README.md](apps/agent/README.md) for the options, the MCP server and the
 "Stop paying with PayPal" scene.
 
+## Use PayPer402 from a terminal
+
+The `payper402` command connects an agent to your account with a claim code, shows what the agent
+may spend, and runs the MCP server and the Claude agent. It runs from a clone of this repository
+(it is not published to npm). Linking PayPal, setting limits and pausing agents stay in the web
+app; the command never holds an operator key.
+
+Install it once, from the repository root:
+
+```bash
+npm install
+npm link
+```
+
+`npm link` puts `payper402` on your PATH; the link points at your clone. Without it, use either of
+these instead (replace `<repo>` with the path of your clone):
+
+```bash
+npm run --silent payper402 -- <command>
+node <repo>/apps/agent/bin/payper402.mjs <command>
+```
+
+Do not use `npx payper402`: the command is not on the npm registry, and `npx` could fetch a
+stranger's package of that name.
+
+**Connect an agent.** In the web app, open Agents, then "New agent", type a name and choose
+"Connect from a terminal" (the onboarding's last step has the same button). It shows a command like
+this, valid for 15 minutes and usable once:
+
+```bash
+payper402 onboard --claim K7QM-2XRD-9VHT --api http://localhost:4020
+```
+
+The command generates the agent's key on your machine and sends only the public key. Then:
+
+```bash
+payper402 status
+```
+
+shows the agent, the limits, today's spend and the PayPal link, and says why the agent is blocked
+when it is. `payper402 status --json` prints the raw answer.
+
+**Run the Claude agent** on a task (it needs Anthropic credentials in the environment; `--budget`
+and `--max-per-call` are in dollars):
+
+```bash
+payper402 run --budget 0.50 "Brief me on today's coffee market"
+```
+
+**Use it from Claude Code.** `payper402 mcp` runs the MCP server with the agent's identity, so
+Claude Code can call paid APIs within your limits:
+
+```bash
+# macOS and Linux, with npm link
+claude mcp add payper402 -- payper402 mcp
+
+# Windows, with npm link
+claude mcp add payper402 -- cmd /c payper402 mcp
+
+# Any system, without npm link
+claude mcp add payper402 -- node <repo>/apps/agent/bin/payper402.mjs mcp
+```
+
+**The config file** is `~/.payper402/config.json` (set `PAYPER402_HOME` to use another
+directory). It holds the agent's private key, so treat it like a `.env` file: do not commit it or
+share it. On Windows its permissions are not restricted. `payper402 onboard --force` replaces it,
+and the old key is deleted. `payper402` takes the key and the seller URL only from this file; an
+`AGENT_PRIVATE_KEY` in the environment is ignored. `npm run agent` and `npm run mcp` still read
+only the environment.
+
+The design is in [docs/spec/operator-cli.md](docs/spec/operator-cli.md).
+
 ## License
 
 [MIT](LICENSE)

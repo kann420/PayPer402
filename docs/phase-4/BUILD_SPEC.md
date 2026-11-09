@@ -1232,5 +1232,5 @@ a browser.
     its token with the operator from 2026-10-17.
   - After "Stop paying with PayPal", the health check revoked both holders at 14:23:27 UTC, and
     each got its own `wallet.revoked` audit (`via: health_check`).
-  - The new operator's 2 uncharged calls (/usr/bin/bash.07) became `uncollectable`. The earlier
+  - The new operator's 2 uncharged calls ($0.07) became `uncollectable`. The earlier
     operator's 8 calls stayed `settled`.

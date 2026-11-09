@@ -23,6 +23,9 @@ How to use this file:
   on every paid call.
 - Phase 4 passed its audit on 2026-10-17. Its Milestone 11 fixes passed audit on 2026-10-18, and
   the browser flow passed on the real sandbox the same day.
+- Phase 4.5 (operator CLI) was inserted before Phase 5 on 2026-10-27, at the user's request. It was
+  built with Claude Sonnet 5.5 and audited by the main session at the user's request, and the
+  audit passed in round 1 on 2026-10-27. The real-sandbox acceptance test passed on 2026-11-05.
 
 ## Overview
 
@@ -34,6 +37,7 @@ How to use this file:
 | 3. Demo seller + AI agent | Oct 26–Nov 1 | An LLM agent shops for paid APIs within a budget | Tech (AI), Innovation |
 | 3.5. Decision layer (Jev) | Oct 16–22 | A calibrated second opinion before each paid call | Tech (AI), Innovation |
 | 4. Web app + AG Studio dashboards | Nov 1–6 | Judges can do everything in a browser | Design, AG Studio prize |
+| 4.5. Operator CLI | Oct 27–Nov 1 | An agent joins from a terminal with a claim code and pays from any MCP client | Design, Tech, Innovation |
 | 5. Hosting + hardening | Nov 6–9 | A public demo that stays up through Dec 15 | Design, Tech |
 | 6. Submission | Nov 9–11 | Video, write-up, testing instructions, submit | Presentation |
 
@@ -228,13 +232,54 @@ the agent, see spend, revoke, and see the agent blocked.
 - **PASS on the real sandbox, 2026-10-18** (`npm run dev:stack`, Claude Sonnet 5.5), run in the
   user's browser:
   - **First operator (2026-10-17):** linked, capped and ran the agent. "Charge now" captured
-    exactly /usr/bin/bash.23 for its 8 paid calls, and the payment shows in both sandbox accounts.
+    exactly $0.23 for its 8 paid calls, and the payment shows in both sandbox accounts.
   - **Second demo operator (2026-10-18):** linked with the same sandbox Personal account and
-    shares its payment token. It ran research-bot for 2 paid calls (/usr/bin/bash.07).
+    shares its payment token. It ran research-bot for 2 paid calls ($0.07).
   - **Revocation:** after "Stop paying with PayPal", the health check revoked both operators in
     the same second. The Overview showed "Stopped by payer" and the agent as blocked.
-  - **Not collected:** the second operator's 2 uncharged calls became `uncollectable` (/usr/bin/bash.07),
+  - **Not collected:** the second operator's 2 uncharged calls became `uncollectable` ($0.07),
     as the credit-risk design expects.
+
+## Phase 4.5: Operator CLI (Oct 27–Nov 1)
+
+Goal: an operator connects an agent from a terminal in one step, and any MCP client (Claude Code,
+Claude Desktop) can then pay per call through PayPer402. The agent's private key is generated on
+the agent's machine and never leaves it. The design is in `docs/spec/operator-cli.md`.
+
+Inserted on 2026-10-27, at the user's request. It must not delay Phase 5: if it slips past Nov 1,
+cut `run` and the web polish first.
+
+- [x] Design spec `docs/spec/operator-cli.md` passes review, with its amendments to
+  `facilitator.md`, `web-app.md` and `agent.md`. It passed in round 2 (draft 2) on 2026-10-27.
+- [x] Build spec `docs/phase-4.5/BUILD_SPEC.md` passes review. It passed in round 2 (draft 2) on
+  2026-10-27, with the review's notes folded in.
+- [x] Facilitator: claim codes (issue and redeem), the agent-signed status endpoint, and
+  migration 3.
+- [x] Web: "Connect from a terminal" in onboarding step 3 and in the Agents drawer.
+- [x] `apps/agent`: the `payper402` command with `onboard`, `status`, `mcp`, `run`, `help` and
+  `version`, and the local config file.
+- [x] README section: link the command from the clone (`npm link`) and add it to Claude Code.
+
+**Done when:**
+
+1. The web app issues a claim code and shows the full `payper402 onboard` command.
+2. `payper402 onboard --claim <code>` registers a new agent. Only its public key reaches the
+   facilitator.
+3. `payper402 status` shows the agent, the caps, today's spend and the wallet status.
+4. A Claude Code session with `payper402 mcp` makes a paid call that appears on the dashboard
+   under the new agent.
+5. After "Stop paying with PayPal", `payper402 status` shows the wallet stopped and the next paid
+   call is refused.
+6. `npm run typecheck`, `npm test` and the private pre-commit checks pass. Every existing test
+   passes without being edited, except the schema-version literals in
+   `apps/facilitator/src/foundation.test.ts` named in the build spec.
+7. The audit passes.
+
+**PASS on the real sandbox, 2026-11-05.** The operator onboarded `testcli` with a web claim
+code. Claude Code called the Market Quote API for `KC` over MCP. The dashboard showed one
+paid call for $0.02 awaiting settlement. After the payer stopped the agreement in PayPal,
+`payper402 status` showed "PayPal stopped by the payer" and the next quote (`CC`) returned
+`wallet_revoked`. The agent's recorded spend stayed at $0.02 in one call.
 
 ## Phase 5: Hosting + hardening (Nov 6–9)
 
@@ -245,7 +290,8 @@ Goal: a public demo that keeps working through judging (Dec 1–15) with nobody 
 - [ ] Register the PayPal sandbox webhook URL and verify signatures in production.
 - [ ] Seed demo data so dashboards are never empty.
 - [ ] Rate limits, input validation, and friendly error and empty states.
-- [ ] Security pass: secrets only in env, sandbox guard, and no key in the browser.
+- [ ] Security pass: secrets only in env, sandbox guard, and no key in the browser. Set
+  `FACILITATOR_TRUST_PROXY=1` behind the host's proxy (operator-cli.md §9.3).
 - [ ] README: what it is, architecture diagram, local setup, and how to run the demo.
 - [ ] Uptime check that keeps the demo alive until Dec 15. It includes one Jev request, so a
   withdrawn model or an exhausted key shows up (decision-layer spec §5).

@@ -116,6 +116,8 @@ the affected route answer 503 with a clear log line, and never prints a value.
 | `NEXT_PUBLIC_REPO_URL` | no | — | GitHub repository URL. Landing links to the repo and the binding spec are hidden when unset. |
 | `WEB_TRUST_PROXY` | no | `0` | `1` means rate limits key on the first `X-Forwarded-For` address (§15.3) |
 | `WEB_LIMIT_*` | no | see §15.3 | Overrides for the limits |
+| `FACILITATOR_PUBLIC_URL` | no | `FACILITATOR_URL` | Phase 4.5: the facilitator URL shown in the `payper402 onboard` command (operator-cli.md §8.1) |
+| `SELLER_PUBLIC_URL` | no | `SELLER_URL` | Phase 4.5: the seller URL stored with each claim code (operator-cli.md §8.1) |
 
 ### 3.2 Facilitator
 
@@ -328,6 +330,7 @@ and `PATCH` passes the same-origin check (§15.2).
 | `POST /api/operator/settlements` | operator | `POST /v1/settlements` | `{ settlement }` |
 | `POST /api/operator/agents` | operator | §4.4 | `{ agent, key: { seed, jwk, fingerprint } }` |
 | `PATCH /api/operator/agents/:id` | operator | `PATCH /v1/agents/:id` with `{ status }` | `{ agent }` |
+| `POST /api/operator/agents/claims` | operator | Phase 4.5: `POST /v1/agents/claims` (operator-cli.md §8.2) | `{ claim: { code, name, expiresAt }, command }` |
 | `POST /api/runs` | operator | agent run (§14) | `text/event-stream` |
 | `POST /api/ai/turn?scope=operator\|seller` | per scope (§4.3) | AI assistant turn (§12) | `AgLlmResponse` |
 | `GET /api/seller/probe/:serviceId` | valid session | unpaid probe of a seller endpoint (§10.11) | probe result |
@@ -607,6 +610,10 @@ The stepper shows: Link PayPal, Set limits, First agent. The state comes from `G
   `AGENT_PRIVATE_KEY` as above), and the
   §4.4 note about the browser keeping the key.
 - "I saved the key" goes to the Done screen.
+- **Phase 4.5:** the name step (1 above) also offers "Connect from a terminal", which shows the
+  claim panel instead of the key panel (operator-cli.md §8.3). While the claim panel is shown,
+  "Skip for now" and "I saved the key" are replaced by "I ran the command", which goes to the Done
+  screen.
 
 ### 10.6 Onboarding done `/app/onboarding/done`, board `OnbDone`
 
@@ -691,7 +698,9 @@ date), and "Manage" to `/app/settings`.
   - "View" opens the detail page.
 
 **"New agent":** opens the drawer; `?new=1` opens it on load. The drawer has the same two steps as
-§10.5, including the "Use it in your agent" block, which the board's drawer lacks.
+§10.5, including the "Use it in your agent" block, which the board's drawer lacks, and the Phase
+4.5 "Connect from a terminal" option (operator-cli.md §8.3). While its claim panel is shown, the
+drawer's footer controls are replaced by "Done", which closes the drawer.
 
 **Detail:**
 
@@ -1252,6 +1261,7 @@ This is the spike's route, hardened.
 | AI turns per session | 120 per hour | `WEB_LIMIT_AI_TURNS_PER_HOUR` |
 | AI turns, all sessions | 2,000 per day | `WEB_LIMIT_AI_TURNS_PER_DAY` |
 | Seller probes per client | 30 per minute | — |
+| Claim codes per operator (Phase 4.5) | 10 per hour | `WEB_LIMIT_CLAIMS_PER_HOUR` |
 
 ### 15.4 Trademark
 
@@ -1352,6 +1362,10 @@ Decisions made while building Phase 4 (2026-10-17). The build spec's Findings ho
 
 ## Change notes
 
+- **Phase 4.5 amendment (2026-10-27), operator CLI ([operator-cli.md](operator-cli.md) §8).**
+  Additive: §3.1 gains `FACILITATOR_PUBLIC_URL` and `SELLER_PUBLIC_URL`, §7 gains
+  `POST /api/operator/agents/claims`, §10.5 and §10.8 gain "Connect from a terminal" and the claim
+  panel, and §15.3 gains the claim limit. Nothing else changes.
 - **Draft 5 (2026-10-18), after the user's second local run.** This round runs the full review and
   audit loops, at the user's request.
   - **Shared PayPal accounts:** the facilitator now lets several operators hold one PayPal

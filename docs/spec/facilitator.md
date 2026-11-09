@@ -1,7 +1,8 @@
 # PayPer402 facilitator: design spec
 
 > Status: draft 3.3 (2026-10-18), for roadmap Phase 2, revised in Phase 4 for shared payment
-> tokens (§5.1). Normative keywords follow RFC 2119.
+> tokens (§5.1), and amended in Phase 4.5 by [operator-cli.md](operator-cli.md) (§7.8).
+> Normative keywords follow RFC 2119.
 
 The facilitator is the service behind the `batch-settlement` / `paypal:sandbox` binding
 ([scheme_batch_settlement_paypal.md](scheme_batch_settlement_paypal.md)). It:
@@ -38,7 +39,8 @@ In scope for Phase 2:
 
 Out of scope: the web UI (Phase 4), the demo seller and the LLM agent (Phase 3), PayPal Payouts,
 rate limiting, multi-process deployment, hosting and webhook registration (Phase 5), and
-self-service sign-up.
+self-service sign-up. Phase 4.5 adds in-process rate limits to its two new public endpoints only
+(operator-cli.md §9.3).
 
 ## 2. Architecture
 
@@ -89,6 +91,7 @@ invalid.
 | `SETTLEMENT_TICK_SECONDS` | no | `15` | Job tick |
 | `WALLET_CHECK_INTERVAL_SECONDS` | no | `30` | Health check period per wallet in `active` or `unlinking` |
 | `LOG_LEVEL` | no | `info` | `debug` / `info` / `warn` / `error` |
+| `FACILITATOR_TRUST_PROXY` | no | `0` | `1` means the rate limits key on the first `X-Forwarded-For` address (operator-cli.md §9.3) |
 
 Secrets MUST NOT appear in logs, error messages or API responses.
 
@@ -112,6 +115,11 @@ Secrets MUST NOT appear in logs, error messages or API responses.
   by a single-use random `state` (see §8).
 - **PayPal webhooks:** `/webhooks/paypal` is unauthenticated and protected by signature
   verification (see §11).
+- **Agent-signed requests (Phase 4.5):** `GET /v1/agent/status` is authenticated by an Ed25519
+  signature from the agent's own key, in `Authorization: PayPer402-Agent <kid>.<iat>.<sig>`
+  (operator-cli.md §4). No API key is involved.
+- **Claim redemption (Phase 4.5):** `POST /v1/claims/redeem` is unauthenticated, protected by the
+  single-use claim code and a rate limit (operator-cli.md §3.4, §9.3).
 
 ## 5. Data model (SQLite)
 
@@ -151,6 +159,9 @@ other column, type, `CHECK`, default and the `UNIQUE` on `link_state` stay exact
 migration 1, and every row is copied unchanged. It then creates the index above. It runs in one
 transaction like every migration; no table references `wallets`, so the rebuild needs no change
 to `foreign_keys`. A database at version 1 is upgraded on start-up.
+
+**Migration 3** (Phase 4.5, 2026-10-27) creates the `agent_claims` table and its index, as defined
+in operator-cli.md §5. It is additive. A database at version 2 is upgraded on start-up.
 
 **Sealed values** (`vault_id_sealed`):
 
@@ -305,7 +316,8 @@ registered on `paypal:sandbox` in an `x402Facilitator`, with these store impleme
   `^[A-Za-z0-9._:-]{1,64}$`, otherwise a fresh one.
 - Errors use `{ "error": "<snake_code>", "message": "<text>" }`, with HTTP 400
   `validation_failed` (plus `issues`), 401 `unauthorized`, 403 `forbidden`, 404 `not_found`, 409
-  as listed per endpoint, and 500 `internal_error`.
+  as listed per endpoint, and 500 `internal_error`. Phase 4.5 adds 410 `claim_expired` and 429
+  `too_many_requests` (with `Retry-After`) for the endpoints of §7.8.
 - Amounts are integer cents; times are unix seconds.
 
 ### 7.1 x402 facilitator (seller key)
@@ -460,6 +472,18 @@ variant:
   and `email: null`, a `not_linked` wallet, an operator key labelled `web-demo` (through
   `issueApiKey`), and the audit record `operator.demo_created` with actor `system` / `admin`.
 - **Response:** 201 `{ operator: { id, name }, apiKey }`. The key appears only in this response.
+
+### 7.8 Agent claims and agent status (Phase 4.5)
+
+Defined in [operator-cli.md](operator-cli.md); summarised here.
+
+| Method and path | Auth | Purpose |
+|---|---|---|
+| `POST /v1/agents/claims` | operator key | Issue a single-use claim code for a new agent (operator-cli.md §3.3). 201 `{ claim: { id, code, name, expiresAt } }`; 409 `too_many_claims` |
+| `POST /v1/claims/redeem` | none (code, rate limit) | Create the agent with the caller's public key (operator-cli.md §3.4). 201 `{ agent, operator: { name }, sellerUrl }`; 404 `claim_not_found`, 409 `claim_used`, 410 `claim_expired`, 409 `agent_key_exists`, 429 `too_many_requests` |
+| `GET /v1/agent/status` | agent signature | Read-only status for the signing agent (operator-cli.md §4.4); 401 `unauthorized`, 429 `too_many_requests` |
+
+`/v1/claims` and `/v1/agent` are mounted outside the operator-key prefix `/v1/agents`.
 
 ## 8. Linking a wallet
 
@@ -773,6 +797,8 @@ From then on, verification fails with `wallet_revoked`, through the registry map
   server routes, with the operator or seller key in the `Authorization` header. The facilitator
   therefore sends **no CORS headers** on any route.
 - **Rate limiting** is out of scope for Phase 2. Note it in the README as a production gap.
+  Phase 4.5 rate-limits `POST /v1/claims/redeem` and `GET /v1/agent/status` in process
+  (operator-cli.md §9.3); every other route is unchanged.
 - **Error leakage:** error responses never include stack traces or PayPal secrets. PayPal
   `debug_id`s may be logged.
 - **Sandbox guard:** `resolveApiBase` is enforced by the PayPal client and cannot be configured
@@ -791,9 +817,20 @@ From then on, verification fails with `wallet_revoked`, through the registry map
 It prints the API keys and the agent's private key JWK **once**, to stdout.
 
 Keys are stored only as hashes, so a later run cannot print them again. `--reset` deletes the
-demo accounts and recreates them, which issues new keys.
+demo accounts and recreates them, which issues new keys. From migration 3 on, it deletes the
+operator's `agent_claims` rows before its agents.
 
 ## Change notes
+
+- **Phase 4.5 additions (2026-10-27), for the operator CLI ([operator-cli.md](operator-cli.md)
+  §10).** All additive; existing endpoints and behaviour are unchanged:
+  - §1 and §13: the two new endpoints are rate-limited in process.
+  - §3: the optional `FACILITATOR_TRUST_PROXY`.
+  - §4: agent-signed requests and the unauthenticated claim redemption.
+  - §7: 410 and 429 in the general error rules.
+  - §5: migration 3 (`agent_claims`).
+  - §7.8: `POST /v1/agents/claims`, `POST /v1/claims/redeem` and `GET /v1/agent/status`.
+  - §14: the seed reset deletes claims before agents.
 
 - **Draft 3.3 (2026-10-18), shared payment tokens, after the user's second local run.**
   - **What happened:** after a restart, the user signed in as a new demo operator and linked the
