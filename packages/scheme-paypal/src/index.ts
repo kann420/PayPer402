@@ -17,6 +17,15 @@ export { ErrorCode } from './errors';
 export { MAX_CENTS, MIN_CENTS, centsToUsdString, isValidCents, parseCentsString, priceToCents, tryParseCentsString } from './money';
 export { canonical, type CanonicalObject, type CanonicalValue } from './canonical';
 export {
+  AGENT_AUTH_SCHEME,
+  AGENT_REQUEST_DOMAIN,
+  agentRequestMessage,
+  parseAgentAuthorization,
+  signAgentRequest,
+  verifyAgentRequestSignature,
+  type AgentRequestFields,
+} from './agent-request';
+export {
   agentKeyFromPrivateKey,
   exportPrivateKeyJwk,
   exportPrivateKeyRaw,
