@@ -205,14 +205,17 @@ The first run prints a PayPal sandbox approval link. Later runs need no `--link`
 ### Connect your own agent from a terminal
 
 The `payper402` command is on npm, so there is nothing to clone or install first (Node.js 22 or
-later). In the web app, open Agents → New agent → "Connect from a terminal". It shows a one-time
-command; run it on the agent's machine:
+later). In the web app, open Agents → New agent → "Connect from a terminal". It shows a ready-made
+command with a one-time claim code (valid for 15 minutes); copy it and run it on the agent's
+machine. It looks like this:
 
 ```bash
-npx -y payper402 onboard --claim K7QM-2XRD-9VHT --api https://api.payper402.xyz
+npx -y payper402 onboard --claim <your-claim-code> --api https://api.payper402.xyz
 ```
 
-In Windows PowerShell, use `npx.cmd` if `npx` is blocked by the execution policy. Then:
+Running it again with a new claim code switches the machine to the new agent; the previous config
+is moved aside, not deleted. In Windows PowerShell, use `npx.cmd` if `npx` is blocked by the
+execution policy. Then:
 
 ```bash
 npx payper402 status

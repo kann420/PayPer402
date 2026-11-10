@@ -17,6 +17,7 @@ const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = path.resolve(APP, '../..');
 const OUT = path.join(APP, 'dist/npm');
 const HOSTED_API = 'https://api.payper402.xyz';
+const WEB = 'https://payper402.xyz';
 const REPO = 'https://github.com/kann420/PayPer402';
 
 /** The third-party packages the bundle imports; versions come from `apps/agent/package.json`. */
@@ -106,12 +107,17 @@ Requires Node.js 22 or later.
 
 ## Connect an agent
 
-In the PayPer402 web app, open **Agents → New agent → Connect from a terminal** and run the command
-it shows:
+1. Open the PayPer402 web app (the hosted demo is [${WEB}](${WEB})), sign in and link PayPal.
+2. Go to **Agents → New agent → Connect from a terminal**. The app shows a one-time claim code,
+   valid for 15 minutes, inside a ready-made command.
+3. Copy that command and run it on the agent's machine. It looks like this, with your own code:
 
 \`\`\`bash
-npx -y payper402 onboard --claim K7QM-2XRD-9VHT
+npx -y payper402 onboard --claim <your-claim-code>
 \`\`\`
+
+Running it again with a new claim code switches this machine to the new agent; the previous
+config is moved aside, not deleted.
 
 The agent's Ed25519 key is generated on this machine and saved in \`~/.payper402/config.json\`
 (\`PAYPER402_HOME\` changes the folder). Only the public key is sent. Treat the file like a \`.env\`.
