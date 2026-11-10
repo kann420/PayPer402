@@ -9,7 +9,8 @@ export type ClaimInfo = {
   command: string;
 };
 
-const MCP_COMMAND = 'claude mcp add payper402 -- payper402 mcp';
+const MCP_COMMAND = 'claude mcp add -s user payper402 -- npx -y payper402 mcp';
+const MCP_COMMAND_WINDOWS = 'claude mcp add -s user payper402 -- cmd /c npx -y payper402 mcp';
 const KBTN = 'inline-flex min-h-11 items-center gap-2 rounded-[10px] px-4 py-[11px] font-semibold';
 
 /** "Connect from a terminal" (operator-cli.md §8.3): the command to run on the agent's machine. */
@@ -22,8 +23,8 @@ export function ClaimPanel({ info }: { info: ClaimInfo }) {
       <div className="flex flex-col gap-3">
         <strong className="text-[15px]">Run this on the agent&apos;s machine</strong>
         <p className="m-0 text-sm text-ink-700">
-          First time using the CLI? From the PayPer402 repository root, run <code>npm install</code> then{' '}
-          <code>npm link</code>. In Windows PowerShell, use <code>npm.cmd install</code> and <code>npm.cmd link</code>.
+          One command, nothing to install first: it needs Node.js 22 or later. In Windows PowerShell, use <code>npx.cmd</code> instead of{' '}
+          <code>npx</code>.
         </p>
         <CodeBlock label="Command to run on the agent's machine">{info.command}</CodeBlock>
         <div className="flex flex-wrap items-center gap-3">
@@ -50,14 +51,22 @@ export function ClaimPanel({ info }: { info: ClaimInfo }) {
         <p className="m-0 text-sm text-ink-700">The agent creates its own key. PayPer402 only receives the public key.</p>
       </div>
       <div className="flex flex-col gap-2">
-        <CodeBlock size={12.5} label="Add the payper402 tools to Claude Code">
+        <strong className="text-[15px]">Optional: let Claude Code pay per call</strong>
+        <p className="m-0 text-sm text-ink-700">After the agent is connected, add its tools to Claude Code. macOS and Linux:</p>
+        <CodeBlock size={12.5} label="Add the payper402 tools to Claude Code on macOS and Linux">
           {MCP_COMMAND}
         </CodeBlock>
-        <p className="m-0 text-sm text-ink-700">Then Claude Code can pay for APIs within your limits.</p>
+        <p className="m-0 text-sm text-ink-700">Windows:</p>
+        <CodeBlock size={12.5} label="Add the payper402 tools to Claude Code on Windows">
+          {MCP_COMMAND_WINDOWS}
+        </CodeBlock>
+        <p className="m-0 text-sm text-ink-700">
+          Then Claude Code can pay for APIs within your limits. Check the agent any time with <code>npx payper402 status</code>.
+        </p>
       </div>
       {repo !== undefined && repo !== '' && (
-        <a href={`${repo.replace(/\/+$/, '')}#use-payper402-from-a-terminal`} target="_blank" rel="noreferrer" className="text-sm font-semibold">
-          Install the payper402 command
+        <a href={`${repo.replace(/\/+$/, '')}#connect-your-own-agent-from-a-terminal`} target="_blank" rel="noreferrer" className="text-sm font-semibold">
+          More about the payper402 command
         </a>
       )}
     </>

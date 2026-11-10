@@ -79,7 +79,7 @@ export function createPatchAgentHandler(deps: WebDeps): (request: Request, id: s
 
 
 /**
- * `POST /api/operator/agents/claims` (operator-cli.md §8.2): a claim code for `payper402 onboard`.
+ * `POST /api/operator/agents/claims` (operator-cli.md §8.2): a claim code for `npx payper402 onboard`.
  * The web app never holds a key for these agents, so the session cookie is not touched.
  */
 export const createClaimHandler = operatorRoute(async ({ deps, request, session }) => {
@@ -93,7 +93,7 @@ export const createClaimHandler = operatorRoute(async ({ deps, request, session 
   return json(
     {
       claim: { code: claim.code, name: claim.name, expiresAt: claim.expiresAt },
-      command: `payper402 onboard --claim ${claim.code} --api ${deps.config.facilitatorPublicUrl}`,
+      command: `npx -y payper402 onboard --claim ${claim.code} --api ${deps.config.facilitatorPublicUrl}`,
     },
     { status: 201 },
   );

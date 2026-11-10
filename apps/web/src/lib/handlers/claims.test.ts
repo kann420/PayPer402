@@ -58,7 +58,7 @@ describe('POST /api/operator/agents/claims', () => {
       expect(res.status).toBe(201);
       const json = (await body(res)) as { claim: { code: string; name: string; expiresAt: number }; command: string };
       expect(json.claim).toEqual({ code: expect.stringMatching(/^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$/), name: 'research-bot', expiresAt: w.h.clock.now + 900 });
-      expect(json.command).toBe(`payper402 onboard --claim ${json.claim.code} --api https://pay.example.test`);
+      expect(json.command).toBe(`npx -y payper402 onboard --claim ${json.claim.code} --api https://pay.example.test`);
       expect(Object.keys(json).sort()).toEqual(['claim', 'command']);
       expect(w.h.db.prepare('SELECT operator_id, agent_name, seller_url FROM agent_claims').get()).toEqual({
         operator_id: operatorId,
@@ -84,7 +84,7 @@ describe('POST /api/operator/agents/claims', () => {
 
     it('uses FACILITATOR_URL for --api and SELLER_URL for the stored seller URL', async () => {
       const json = (await body(await claim('research-bot'))) as { command: string };
-      expect(json.command).toMatch(/^payper402 onboard --claim \S+ --api http:\/\/127\.0\.0\.1:\d+$/);
+      expect(json.command).toMatch(/^npx -y payper402 onboard --claim \S+ --api http:\/\/127\.0\.0\.1:\d+$/);
       expect(json.command.endsWith(w.config.facilitatorUrl)).toBe(true);
       expect(w.h.db.prepare('SELECT seller_url FROM agent_claims').get()).toEqual({ seller_url: w.config.sellerUrl });
     });
