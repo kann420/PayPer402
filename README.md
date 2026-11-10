@@ -204,33 +204,43 @@ The first run prints a PayPal sandbox approval link. Later runs need no `--link`
 
 ### Connect your own agent from a terminal
 
-The `payper402` command runs from this clone (it is not published to npm):
+The `payper402` command is on npm, so there is nothing to clone or install first (Node.js 22 or
+later). In the web app, open Agents → New agent → "Connect from a terminal". It shows a one-time
+command; run it on the agent's machine:
 
 ```bash
-npm link
+npx -y payper402 onboard --claim K7QM-2XRD-9VHT --api https://api.payper402.xyz
 ```
 
-In the web app, open Agents → New agent → "Connect from a terminal". It shows a one-time command:
+In Windows PowerShell, use `npx.cmd` if `npx` is blocked by the execution policy. Then:
 
 ```bash
-payper402 onboard --claim K7QM-2XRD-9VHT --api http://localhost:4020
+npx payper402 status
 ```
+
+To let Claude Code pay per call through PayPer402 (optional, after onboarding):
 
 ```bash
-payper402 status
+claude mcp add -s user payper402 -- npx -y payper402 mcp
 ```
+
+On Windows (not WSL):
 
 ```bash
-payper402 run --budget 0.50 "Brief me on today's coffee market"
+claude mcp add -s user payper402 -- cmd /c npx -y payper402 mcp
 ```
 
-To let Claude Code pay per call through PayPer402 (on Windows, use `cmd /c payper402 mcp`):
+To run the built-in Claude agent on a task instead (needs `ANTHROPIC_API_KEY`):
 
 ```bash
-claude mcp add payper402 -- payper402 mcp
+npx payper402 run --budget 0.50 "Brief me on today's coffee market"
 ```
 
-The agent's private key lives in `~/.payper402/config.json`. Treat it like a `.env` file.
+The agent's private key lives in `~/.payper402/config.json` (`PAYPER402_HOME` changes the folder).
+Treat it like a `.env` file.
+
+From a clone, `npm link` gives the same command as `payper402`, running the repository sources,
+and `npm run build:npm -w apps/agent` builds the npm package into `apps/agent/dist/npm`.
 
 ## Tests
 
