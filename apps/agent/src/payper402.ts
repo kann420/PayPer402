@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { exportPrivateKeyRaw, generateAgentKey } from '@payper402/scheme-paypal';
 import { runCli, type CliDeps, type CliIo } from './cli';
-import { configPath, readCliConfig, writeCliConfig, type CliConfig } from './cli-config';
+import { backupCliConfig, configPath, readCliConfig, writeCliConfig, type CliConfig } from './cli-config';
 import { ConfigError, DEFAULT_SELLER_URL, loadAgentConfig } from './config';
 import { getAgentStatus, redeemClaim, type ApiResult } from './facilitator-api';
 import { startMcpStdio } from './mcp';
@@ -119,17 +119,10 @@ async function onboard(args: string[], env: Record<string, string | undefined>, 
   const api = httpUrl('--api', values.api ?? DEFAULT_API_URL);
   const seller = values.seller === undefined ? undefined : httpUrl('--seller', values.seller);
 
-  if (values.force !== true) {
-    const existing = await readCliConfig(env);
-    if (existing.ok) {
-      throw new CommandError(
-        `This machine is already connected as ${existing.config.agent.name}. Use --force to replace it; the old key is deleted.`,
-      );
-    }
-    if (existing.reason === 'invalid') {
-      throw new CommandError(`This machine already has a config at ${configPath(env)}. Use --force to replace it; the old key is deleted.`);
-    }
-  }
+  // A machine that is already connected is switched to the new agent only once the claim succeeds:
+  // the old config is moved aside (kept, never deleted), unless --force asks to overwrite it.
+  const existing = await readCliConfig(env);
+  const previous = existing.ok ? existing.config.agent.name : existing.reason === 'invalid' ? 'invalid' : undefined;
 
   // The key stays in memory until the config is written; any error below discards it.
   const key = generateAgentKey();
@@ -148,6 +141,7 @@ async function onboard(args: string[], env: Record<string, string | undefined>, 
   const { agent, operator } = result.body;
   if (agent.kid !== key.kid) throw new CommandError('PayPer402 created an agent for a different key. Create a new claim code and try again.');
 
+  const now = (deps.now ?? (() => Math.floor(Date.now() / 1000)))();
   const config: CliConfig = {
     version: 1,
     facilitatorUrl: api,
@@ -155,9 +149,11 @@ async function onboard(args: string[], env: Record<string, string | undefined>, 
     operatorName: operator.name,
     agent: { id: agent.id, name: agent.name, kid: agent.kid, keyFingerprint: agent.keyFingerprint },
     privateKey: exportPrivateKeyRaw(key.privateKey),
-    createdAt: (deps.now ?? (() => Math.floor(Date.now() / 1000)))(),
+    createdAt: now,
   };
+  let backup: string | undefined;
   try {
+    if (previous !== undefined && values.force !== true) backup = await backupCliConfig(env, previous, now);
     await writeCliConfig(env, config);
   } catch (err) {
     const reason = (err as NodeJS.ErrnoException).code ?? 'write failed';
@@ -168,6 +164,13 @@ async function onboard(args: string[], env: Record<string, string | undefined>, 
   const windows = (deps.platform ?? process.platform) === 'win32';
   io.out(`Connected as ${agent.name} (${agent.keyFingerprint}) for ${operator.name}.`);
   io.out(`Your private key stays on this machine: ${configPath(env)}`);
+  if (backup !== undefined) {
+    io.out(
+      previous === 'invalid'
+        ? `The previous config was moved to ${backup}.`
+        : `This replaces the previous connection (${previous}). Its config was moved to ${backup}.`,
+    );
+  }
   io.out('');
   io.out('Next:');
   io.out(`  ${CMD} status`);

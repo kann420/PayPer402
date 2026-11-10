@@ -79,6 +79,18 @@ export async function readCliConfig(env: Record<string, string | undefined>): Pr
   }
 }
 
+/**
+ * Moves the current config aside to `config.<label>-<unixSeconds>.json` in the same directory, so a
+ * new onboarding never destroys an old key. The rename keeps the file's `0o600` mode. Returns the
+ * backup path.
+ */
+export async function backupCliConfig(env: Record<string, string | undefined>, label: string, nowSeconds: number): Promise<string> {
+  const safe = label.replace(/[^a-z0-9-]/gi, '').slice(0, 40) || 'agent';
+  const backup = path.join(configDir(env), `config.${safe}-${nowSeconds}.json`);
+  await rename(configPath(env), backup);
+  return backup;
+}
+
 /** Writes the config atomically: a `0o700` directory, a `0o600` temporary file, then a rename. */
 export async function writeCliConfig(env: Record<string, string | undefined>, config: CliConfig): Promise<void> {
   const file = configPath(env);

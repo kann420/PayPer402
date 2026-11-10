@@ -1,6 +1,6 @@
 {
   "name": "@payper402/agent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "PayPer402 demo agent: a Claude agent and an MCP server that pay per call over HTTP 402.",
   "license": "MIT",

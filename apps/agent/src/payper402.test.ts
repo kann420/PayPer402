@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -159,31 +159,55 @@ describe('payper402', () => {
       expect((await readConfig()).config.sellerUrl).toBe('http://localhost:4021');
     });
 
-    it('refuses an existing config without --force, making no request, and replaces it with --force', async () => {
+    const configFiles = async () => (await readdir(path.dirname(configPath(env)))).sort();
+
+    it('switches an already connected machine to the new agent, keeping the old config aside', async () => {
       expect(await onboard()).toBe(0);
       const first = await readConfig();
-      requests.length = 0;
+      const firstText = await readFile(configPath(env), 'utf8');
       out.length = 0;
-      expect(await onboard()).toBe(1);
-      expect(requests).toEqual([]);
-      expect(err).toEqual(['Error: This machine is already connected as research-bot. Use --force to replace it; the old key is deleted.']);
-      expect((await readConfig()).config).toEqual(first.config);
 
-      err.length = 0;
-      expect(await onboard(['--force'], await issue('second-bot'))).toBe(0);
+      expect(await onboard([], await issue('second-bot'))).toBe(0);
       const second = await readConfig();
       expect(second.config.agent.name).toBe('second-bot');
-      expect(second.config.privateKey).not.toBe(first.config.privateKey);
       expect(second.config.agent.kid).not.toBe(first.config.agent.kid);
+
+      const backup = path.join(path.dirname(configPath(env)), `config.research-bot-${h.clock.now}.json`);
+      expect(await configFiles()).toEqual(['config.json', path.basename(backup)]);
+      expect(await readFile(backup, 'utf8')).toBe(firstText);
+      expect(out).toContain(`This replaces the previous connection (research-bot). Its config was moved to ${backup}.`);
+      expect(err).toEqual([]);
     });
 
-    it('refuses an invalid existing config without --force, without echoing it', async () => {
+    it('leaves the current connection untouched when the new claim fails', async () => {
+      const code = await issue();
+      expect(await onboard([], code)).toBe(0);
+      const firstText = await readFile(configPath(env), 'utf8');
+      out.length = 0;
+      expect(await onboard([], code)).toBe(1);
+      expect(err).toEqual(['Error: That claim code was already used. Create a new one in the web app.']);
+      expect(await configFiles()).toEqual(['config.json']);
+      expect(await readFile(configPath(env), 'utf8')).toBe(firstText);
+    });
+
+    it('overwrites the old config without a backup when --force is given', async () => {
+      expect(await onboard()).toBe(0);
+      out.length = 0;
+      expect(await onboard(['--force'], await issue('second-bot'))).toBe(0);
+      expect((await readConfig()).config.agent.name).toBe('second-bot');
+      expect(await configFiles()).toEqual(['config.json']);
+      expect(out.join('\n')).not.toContain('previous');
+    });
+
+    it('moves an invalid existing config aside, without echoing it', async () => {
       await writeCliConfig(env, configFor(generateAgentKey()));
       await writeFile(configPath(env), '{"privateKey":"super-secret-value"');
-      expect(await onboard()).toBe(1);
-      expect(err[0]).toContain(`already has a config at ${configPath(env)}`);
-      expect(err.join('\n')).not.toContain('super-secret-value');
-      expect(requests).toEqual([]);
+      expect(await onboard()).toBe(0);
+      const backup = path.join(path.dirname(configPath(env)), `config.invalid-${h.clock.now}.json`);
+      expect(out).toContain(`The previous config was moved to ${backup}.`);
+      expect(await readFile(backup, 'utf8')).toBe('{"privateKey":"super-secret-value"');
+      expect([...out, ...err].join('\n')).not.toContain('super-secret-value');
+      expect((await readConfig()).config.agent.name).toBe('research-bot');
     });
 
     describe('errors', () => {
