@@ -131,10 +131,11 @@ export function createApp(deps: AppDeps, services: Services = createServices(dep
   const operator = authenticate(db, config.apiKeyPepper, clock, ['operator']);
   const seller = authenticate(db, config.apiKeyPepper, clock, ['seller']);
   const either = authenticate(db, config.apiKeyPepper, clock, ['operator', 'seller']);
-  const reads = readRoutes(ctx, settlements);
+
+  const rateNow = deps.rateClock ?? Date.now;
+  const reads = readRoutes(ctx, settlements, rateNow);
 
   // In-process rate limits for the two unauthenticated-by-key endpoints (operator-cli.md §9.3).
-  const rateNow = deps.rateClock ?? Date.now;
   const client = (req: Request) => clientKey(req, config.trustProxy);
   const redeemLimit = rateLimit([
     [new SlidingWindow(10, MINUTE_MS, rateNow), client],

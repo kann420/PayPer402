@@ -11,6 +11,7 @@ export type PayPalGateway = Pick<
   | 'deletePaymentToken'
   | 'chargeVaultedWallet'
   | 'getOrder'
+  | 'getCapture'
   | 'verifyWebhookSignature'
 >;
 

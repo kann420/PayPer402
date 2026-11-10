@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import {
   PayPalApiError,
   PayPalNetworkError,
+  type CaptureDetails,
   type ChargeResult,
   type ChargeVaultedWalletInput,
   type CreateSetupTokenInput,
@@ -98,6 +99,9 @@ export class FakePayPal implements PayPalGateway {
   readonly deletedTokens: string[] = [];
   readonly chargeScripts: ChargeScript[] = [];
   readonly orderScripts: OrderScript[] = [];
+  /** Captures PayPal knows, keyed by capture id: filled by completed charges, editable by tests. */
+  readonly captures = new Map<string, CaptureDetails>();
+  getCaptureError: unknown = undefined;
   /** Payment token returned per setup-token request id (idempotent like PayPal). */
   private readonly tokensByRequest = new Map<string, string>();
   private readonly gates = new Map<Method, Gate[]>();
@@ -196,8 +200,19 @@ export class FakePayPal implements PayPalGateway {
   async chargeVaultedWallet(input: ChargeVaultedWalletInput): Promise<ChargeResult> {
     await this.enter('chargeVaultedWallet', [input]);
     const script = this.chargeScripts.shift();
-    if (script) return script(input);
-    return completedCharge(input.amountCents, `ORDER-${input.requestId}`, `CAP-${input.requestId}`);
+    const result = script ? await script(input) : completedCharge(input.amountCents, `ORDER-${input.requestId}`, `CAP-${input.requestId}`);
+    if (result.capture) {
+      this.captures.set(result.capture.id, { ...result.capture, currency: 'USD', invoiceId: input.invoiceId, customId: input.invoiceId, orderId: result.orderId });
+    }
+    return result;
+  }
+
+  async getCapture(captureId: string): Promise<CaptureDetails> {
+    await this.enter('getCapture', [captureId]);
+    if (this.getCaptureError) throw this.getCaptureError;
+    const capture = this.captures.get(captureId);
+    if (!capture) throw apiError(404, ['INVALID_RESOURCE_ID'], { path: `/v2/payments/captures/${captureId}` });
+    return capture;
   }
 
   async getOrder(orderId: string): Promise<ChargeResult> {

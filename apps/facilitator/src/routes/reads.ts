@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf } from '../auth';
 import type { CommitmentRow, SettlementRow } from '../db/rows';
-import { handler, notFound, parse } from '../http';
+import { handler, HttpError, notFound, parse } from '../http';
+import { MINUTE_MS, SlidingWindow } from '../rate-limit';
 import type { ServiceContext } from '../services/context';
 import type { SettlementService } from '../services/settlements';
+import { verifySettlement } from '../services/verify';
 import { commitmentView, settlementView } from '../views';
 import { emptyBody } from './operator';
 
@@ -55,7 +57,13 @@ export function commitmentFilter(scope: { column: string; value: string }, query
 }
 
 /** `/v1/commitments` and `/v1/settlements` for operators (design spec §7.2). */
-export function readRoutes(ctx: ServiceContext, settlements: SettlementService): { commitments: Router; settlements: Router } {
+export function readRoutes(
+  ctx: ServiceContext,
+  settlements: SettlementService,
+  rateNow: () => number = Date.now,
+): { commitments: Router; settlements: Router } {
+  // Each verification is one PayPal API call, so it is limited per operator.
+  const verifyWindow = new SlidingWindow(20, MINUTE_MS, rateNow);
   const commitmentsRouter = Router();
   const settlementsRouter = Router();
 
@@ -101,6 +109,23 @@ export function readRoutes(ctx: ServiceContext, settlements: SettlementService):
       },
     });
   });
+
+  settlementsRouter.get(
+    '/:id/verify',
+    handler(async (req, res) => {
+      const operatorId = authOf(res).ownerId;
+      const row = ctx.db
+        .prepare('SELECT * FROM settlements WHERE id = ? AND operator_id = ?')
+        .get(req.params['id'] ?? '', operatorId) as SettlementRow | undefined;
+      if (!row) throw notFound('Settlement not found');
+      if (!verifyWindow.allows(operatorId)) {
+        res.setHeader('Retry-After', String(verifyWindow.retryAfterSeconds(operatorId)));
+        throw new HttpError(429, 'too_many_requests', 'Too many checks. Try again in a minute.');
+      }
+      verifyWindow.hit(operatorId);
+      res.json({ verification: await verifySettlement(ctx, row) });
+    }),
+  );
 
   settlementsRouter.post(
     '/',
