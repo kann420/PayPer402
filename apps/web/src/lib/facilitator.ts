@@ -109,6 +109,27 @@ export const commitmentSchema = z.object({
 export type Commitment = z.output<typeof commitmentSchema>;
 
 export const settlementDetailSchema = settlementSchema.extend({ commitments: z.array(commitmentSchema) });
+
+/** `GET /v1/settlements/:id/verify`: the charge checked against the capture PayPal reports. */
+export const verificationSchema = z.object({
+  settlementId: z.string(),
+  checkedAt: unix,
+  verified: z.boolean(),
+  paypal: z
+    .object({
+      captureId: z.string(),
+      status: z.string(),
+      amount: cents,
+      currency: z.string(),
+      invoiceId: z.string().nullable(),
+      orderId: z.string().nullable(),
+      createTime: z.string().nullable(),
+      updateTime: z.string().nullable(),
+    })
+    .nullable(),
+  checks: z.array(z.object({ name: z.string(), ok: z.boolean(), expected: z.string(), actual: z.string().nullable() })),
+});
+export type Verification = z.output<typeof verificationSchema>;
 export type SettlementDetail = z.output<typeof settlementDetailSchema>;
 
 export const sellerCommitmentSchema = z.object({
@@ -321,6 +342,8 @@ export class FacilitatorClient {
         call(z.object({ settlements: z.array(settlementSchema) }), 'GET', '/v1/settlements', { query }),
       settlement: (id: string) => call(z.object({ settlement: settlementDetailSchema }), 'GET', `/v1/settlements/${encodeURIComponent(id)}`),
       settle: () => call(z.object({ settlement: settlementSchema }), 'POST', '/v1/settlements'),
+      verifySettlement: (id: string) =>
+        call(z.object({ verification: verificationSchema }), 'GET', `/v1/settlements/${encodeURIComponent(id)}/verify`),
     };
   }
 

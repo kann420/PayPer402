@@ -61,6 +61,15 @@ export const createSettleHandler = operatorRoute(async ({ deps, request, session
   return json(await deps.facilitator.operator(session.operator.key).settle(), { status: 201 });
 });
 
+/** `POST /api/operator/settlements/:id/verify`: "Verify with PayPal" on the charge detail page. */
+export function createVerifySettlementHandler(deps: WebDeps): (request: Request, id: string) => Promise<Response> {
+  return (request, id) =>
+    operatorRoute(async ({ deps: d, request: r, session }) => {
+      await readBody(r, emptyBody);
+      return json(await d.facilitator.operator(session.operator.key).verifySettlement(id));
+    })(deps)(request);
+}
+
 /** `POST /api/operator/agents` (design spec §4.4): one of the two routes that write the cookie. */
 export const createAgentsHandler = operatorRoute(async ({ deps, request, session, key }) => {
   const body = await readBody(request, agentBody);

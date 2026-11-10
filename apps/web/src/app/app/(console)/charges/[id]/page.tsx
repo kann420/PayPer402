@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChargeCalls } from '@/components/charges/charge-calls';
+import { VerifyWithPayPal } from '@/components/charges/verify-paypal';
 import { LiveRefresh } from '@/components/live/live-refresh';
 import { ConsoleContent, ConsoleFooter } from '@/components/shell/console-shell';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -122,6 +123,8 @@ export default async function ChargeDetailPage({ params }: { params: Promise<{ i
             </dl>
           </section>
         </div>
+
+        {settlement.paypalCaptureId === null ? null : <VerifyWithPayPal settlementId={settlement.id} captureId={settlement.paypalCaptureId} />}
 
         <section className="flex flex-col gap-3 rounded-[14px] border border-line-200 bg-white p-[18px]">
           <strong className="text-sm">By service</strong>

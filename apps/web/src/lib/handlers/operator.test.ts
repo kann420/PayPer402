@@ -9,7 +9,9 @@ import {
   createLinkHandler,
   createPatchAgentHandler,
   createRefreshHandler,
+  createSettleHandler,
   createUnlinkHandler,
+  createVerifySettlementHandler,
 } from './operator';
 import { createSessionHandler } from './session';
 
@@ -152,5 +154,35 @@ describe('POST /api/operator/wallet/refresh', () => {
     const res = await createRefreshHandler(w.deps)(w.request('/api/operator/wallet/refresh', { body: {} }));
     expect(res.status).toBe(200);
     expect(await body(res)).toMatchObject({ wallet: { status: 'link_failed', linkError: 'payment_token_failed' } });
+  });
+});
+
+describe('POST /api/operator/settlements/:id/verify', () => {
+  const verify = (id: string, opts: { origin?: string } = {}) =>
+    createVerifySettlementHandler(w.deps)(w.request(`/api/operator/settlements/${id}/verify`, { body: {}, ...opts }), id);
+  let settlementId: string;
+  beforeEach(async () => {
+    const { agentId } = w.h.addAgent(operatorId);
+    w.h.activateWallet(operatorId);
+    w.h.addCommitment({ operatorId, agentId, payTo: w.sellerId, amount: 8 });
+    const res = await createSettleHandler(w.deps)(w.request('/api/operator/settlements', { body: {} }));
+    settlementId = ((await body(res)) as { settlement: { id: string } }).settlement.id;
+  });
+
+  it('returns the PayPal verification of the charge', async () => {
+    const res = await verify(settlementId);
+    expect(res.status).toBe(200);
+    expect(await body(res)).toMatchObject({
+      verification: { settlementId, verified: true, paypal: { status: 'COMPLETED', amount: 8, currency: 'USD', invoiceId: settlementId } },
+    });
+  });
+
+  it('passes paypal_unavailable through as 502 and refuses foreign origins', async () => {
+    w.h.paypal.getCaptureError = networkError();
+    const res = await verify(settlementId);
+    expect(res.status).toBe(502);
+    expect(await body(res)).toMatchObject({ error: 'paypal_unavailable' });
+    expect((await verify(settlementId, { origin: 'http://evil.example' })).status).toBe(403);
+    expect((await verify('stl_missing')).status).toBe(404);
   });
 });
