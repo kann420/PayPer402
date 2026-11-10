@@ -9,7 +9,10 @@ get billed once.
 
 Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com) (October–November 2026).
 
+- **Live demo:** <https://payper402.xyz> (PayPal sandbox, test money only). The sandbox test
+  accounts are in the testing instructions on Devpost.
 - **Demo video:** _link coming soon_
+- **Proof it settles on PayPal:** [see below](#proof-it-settles-on-paypal)
 - **Binding spec:** [docs/spec/scheme_batch_settlement_paypal.md](docs/spec/scheme_batch_settlement_paypal.md)
 - **How it meets the judging criteria:** [see below](#judging-criteria)
 
@@ -60,7 +63,9 @@ operators and API sellers do not want to hold stablecoins; they already have Pay
 - **A terminal command and an MCP server.** `payper402 onboard` connects an agent with a claim code
   from the web app. The agent's key is generated locally and never leaves the machine.
   `payper402 mcp` lets Claude Code or Claude Desktop pay per call through PayPer402.
-- **A demo seller.** "Acme Data" sells four paid APIs (simulated data), priced from 1 to 25 cents.
+- **A demo seller.** "Acme Data" sells four paid APIs, priced from 1 to 25 cents. Its market data and
+  news are simulated and labelled as such in every response; the payments for them are real sandbox
+  payments.
 
 ## Judging criteria
 
@@ -68,11 +73,11 @@ Every feature was checked against the hackathon's five criteria before it was bu
 
 | Criterion | Where PayPer402 does it |
 |---|---|
-| **Technological implementation** | **PayPal:** four APIs work together: OAuth, a one-time Vault v3 link (`UNSCHEDULED_POSTPAID`), Orders v2 captures with no payer present (idempotent with `PayPal-Request-Id`), and Webhooks plus PayPal's own error codes for revocation ([`packages/paypal-client`](packages/paypal-client/src/client.ts), [`apps/facilitator`](apps/facilitator/src/services/settlements.ts)). **AI:** a Claude agent with tool use decides what to buy ([`agent.ts`](apps/agent/src/agent.ts)), Jev checks every payment ([`jev.ts`](apps/agent/src/jev.ts)), Claude analyses the AG Studio dashboards, and Claude powers the seller's paid APIs. **x402:** plug-ins for the official `@x402/core` SDK, no fork ([`packages/scheme-paypal`](packages/scheme-paypal/src)). The full flow passed end to end on the real PayPal sandbox; more than 1,000 tests. |
+| **Technological implementation** | **PayPal:** five APIs work together: OAuth, a one-time Vault v3 link (`UNSCHEDULED_POSTPAID`), Orders v2 captures with no payer present (idempotent with `PayPal-Request-Id`) that can be read back from Payments v2 to verify them, and Webhooks plus PayPal's own error codes for revocation ([`packages/paypal-client`](packages/paypal-client/src/client.ts), [`apps/facilitator`](apps/facilitator/src/services/settlements.ts)). **AI:** a Claude agent with tool use decides what to buy ([`agent.ts`](apps/agent/src/agent.ts)), Jev checks every payment ([`jev.ts`](apps/agent/src/jev.ts)), Claude analyses the AG Studio dashboards, and Claude powers the seller's paid APIs. **x402:** plug-ins for the official `@x402/core` SDK, no fork ([`packages/scheme-paypal`](packages/scheme-paypal/src)). The full flow passed end to end on the real PayPal sandbox; more than 1,000 tests. |
 | **Design** | One product for three people: the **operator** (web app: link PayPal, set caps, manage agents, watch spending, charge, see a stopped link), the **seller** (revenue per endpoint, settlement status) and the **developer** (the `payper402` command and an MCP server for Claude Code and Claude Desktop). The unhappy paths are designed too: empty states, declined charges, a link stopped by the payer, paused and blocked agents. Live run shows each step and ends with a plain-English spend report whose numbers come from the ledger, never from the model ([`apps/web`](apps/web/src/components)). |
 | **Potential impact** | **Who:** teams whose AI agents need to buy data and tools on their own, and API sellers who want per-call revenue without crypto or a sign-up wall. **Why:** with a fixed fee of about $0.49 per US PayPal checkout transaction, charging a 2-cent call on its own would cost about 25 times the call. Batching signed commitments into one charge pays that fee once per batch. **Control:** caps per call, per day and in total, an unsettled cap that bounds credit, and "Stop paying with PayPal" blocking the agent on its next call, shown in the demo. |
 | **Innovation** | **A PayPal rail for x402.** x402 normally settles on a blockchain, and existing fiat approaches charge cards. PayPer402 defines an open x402 network binding for the PayPal wallet (`paypal:sandbox`, scheme `batch-settlement`), written in the style of the x402 scheme specs ([binding spec](docs/spec/scheme_batch_settlement_paypal.md)). **Postpaid micro-commitments** make cent-level pricing work on a rail with fixed fees, with credit risk bounded by design. **A second opinion before paying:** a separate calibrated model checks each call, and code makes the final decision. |
-| **Presentation** | **Demo video:** _link coming soon_. One story: the problem, link once, the agent pays per call, one PayPal charge, the dashboards, and "Stop paying with PayPal" blocking the agent. Judges can replay the same story locally in seven steps ([Run it locally](#run-it-locally)). |
+| **Presentation** | **Demo video:** _link coming soon_. One story: the problem, link once, the agent pays per call, one PayPal charge, the dashboards, and "Stop paying with PayPal" blocking the agent. Judges can try it on the hosted demo at <https://payper402.xyz>, or replay the same story locally in seven steps ([Run it locally](#run-it-locally)). |
 
 ## Sponsor prize
 
@@ -90,11 +95,39 @@ All calls go to the PayPal **sandbox**. The PayPal client refuses the live API h
 | Vault v3 setup tokens | Start the one-time link (`payment_source.paypal`, `usage_type: MERCHANT`, `usage_pattern: UNSCHEDULED_POSTPAID`) |
 | Vault v3 payment tokens | Exchange the approved setup token for a saved `vault_id`; check it; delete it on unlink |
 | Orders v2 | Create and capture one order per batch with `payment_source.paypal.vault_id`, with `PayPal-Request-Id` for idempotency |
+| Payments v2 captures | Read a capture back from PayPal for "Verify with PayPal" (`GET /v2/payments/captures/{id}`) |
 | Webhooks | `VAULT.PAYMENT-TOKEN.DELETED`, verified with the webhook signature API, for instant revocation |
 
 Revocation is handled as PayPal reports it: `422 AGREEMENT_ALREADY_CANCELLED` on a charge and
 `404 TOKEN_NOT_FOUND` on the token both mark the wallet as stopped. PayPal keeps one agreement per
 payer and merchant, so a revocation stops every operator that shares that payment token.
+
+## Proof it settles on PayPal
+
+PayPal has no public explorer like a blockchain does: every transaction is private to the two
+accounts involved, sandbox included. PayPer402 makes each charge checkable instead, in three
+independent ways.
+
+1. **The ids match on both sides.** Every PayPal charge is one Orders v2 capture, and PayPer402
+   sends its own charge id to PayPal as the order's `invoice_id`. So the charge page in PayPer402
+   and the payment in the payer's PayPal account show the same values:
+
+   | PayPer402 charge page | Payer's PayPal account (Activity → the payment) |
+   |---|---|
+   | Charge id `stl_…` | Invoice ID `stl_…` |
+   | PayPal capture id | Transaction ID |
+   | Amount and paid calls | Amount, and "PayPer402 usage: N paid calls" |
+
+2. **Verify with PayPal.** On any completed charge (PayPal charges → a charge), the button reads the
+   capture straight from the PayPal API and compares it with the ledger: capture found, status
+   `COMPLETED`, amount, currency, invoice id and order id. It writes nothing.
+3. **Log in and look.** With the sandbox test accounts from the Devpost testing instructions, open
+   <https://www.sandbox.paypal.com>. The Personal account shows each charge under Activity, and the
+   PayPer402 agreement under Settings → Payments → Automatic payments, where "Stop paying with
+   PayPal" revokes it. The Business account shows the same payments received.
+
+The demo video shows all three: a charge of $0.08 for three paid calls, its transaction in the
+payer's PayPal account, and the agreement being stopped.
 
 ## Use of AI
 
@@ -178,13 +211,17 @@ the demo seller, and keeps its data in `data/`. Open <http://localhost:3000>.
 
 **4. Walk through the story.**
 
+The hosted demo at <https://payper402.xyz> runs the same story with nothing to install.
+
 1. **Sign in** with a demo account. Each visitor gets their own demo operator.
-2. **Link PayPal.** Approve the link with a PayPal sandbox **Personal** account.
+2. **Link PayPal.** Approve the link with a PayPal sandbox **Personal** account (on the hosted
+   demo, use the one from the Devpost testing instructions).
 3. **Set limits** and create an agent.
 4. **Live run.** Give the agent a task and watch it read prices, pay per call and explain its
    spending. The ledger fills up on the Overview.
 5. **Charge now** (or wait for the unsettled cap). One PayPal capture settles exactly the sum of the
-   calls. It shows in both sandbox accounts.
+   calls. It shows in both sandbox accounts. Open the charge and press **Verify with PayPal** to
+   check it against PayPal directly ([proof](#proof-it-settles-on-paypal)).
 6. **Stop paying with PayPal.** In the sandbox Personal account, stop the PayPer402 automatic
    payment. The Overview shows "Stopped by payer", and the agent's next paid call is refused.
 7. Switch to the **demo seller** to see revenue per endpoint and settlement status.
