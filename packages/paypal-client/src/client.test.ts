@@ -373,6 +373,48 @@ describe('orders', () => {
     expect(call?.headers['prefer']).toBe('return=representation');
   });
 
+  it('gets a capture from Payments v2 with its invoice, order and times', async () => {
+    const fake = fakeFetch([
+      () =>
+        json(
+          200,
+          capture('COMPLETED', {
+            invoice_id: 'stl_abc',
+            custom_id: 'stl_abc',
+            create_time: '2026-11-10T15:26:01Z',
+            update_time: '2026-11-10T15:26:02Z',
+            supplementary_data: { related_ids: { order_id: 'ORDER1' } },
+          }),
+        ),
+    ]);
+    expect(await client(fake.impl).getCapture('CAP/1')).toEqual({
+      id: 'CAP1',
+      status: 'COMPLETED',
+      amountCents: 1234,
+      feeCents: 92,
+      netCents: 1142,
+      currency: 'USD',
+      invoiceId: 'stl_abc',
+      customId: 'stl_abc',
+      orderId: 'ORDER1',
+      createTime: '2026-11-10T15:26:01Z',
+      updateTime: '2026-11-10T15:26:02Z',
+    });
+    const [call] = fake.apiCalls();
+    expect(call?.url).toBe(`${SANDBOX_API_BASE}/v2/payments/captures/CAP%2F1`);
+    expect(call?.method).toBe('GET');
+  });
+
+  it('rejects a capture response without an amount currency', async () => {
+    const fake = fakeFetch([() => json(200, { id: 'CAP1', status: 'COMPLETED', amount: { value: '1.00' } })]);
+    await expect(client(fake.impl).getCapture('CAP1')).rejects.toBeInstanceOf(PayPalNetworkError);
+  });
+
+  it('surfaces a missing capture as a 404 PayPalApiError', async () => {
+    const fake = fakeFetch([() => json(404, { name: 'RESOURCE_NOT_FOUND', message: 'not found', details: [{ issue: 'INVALID_RESOURCE_ID' }] })]);
+    await expect(client(fake.impl).getCapture('NOPE')).rejects.toMatchObject({ httpStatus: 404, issues: ['INVALID_RESOURCE_ID'] });
+  });
+
   it('classifies AGREEMENT_ALREADY_CANCELLED as revocation', async () => {
     const fake = fakeFetch([
       () =>

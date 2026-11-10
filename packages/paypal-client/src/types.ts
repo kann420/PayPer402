@@ -54,6 +54,18 @@ export interface CaptureResult {
   netCents?: number;
 }
 
+/** A capture as PayPal reports it on `GET /v2/payments/captures/{id}`. */
+export interface CaptureDetails extends CaptureResult {
+  /** `amount.currency_code`. */
+  currency: string;
+  invoiceId?: string;
+  customId?: string;
+  /** `supplementary_data.related_ids.order_id`. */
+  orderId?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
 export interface ChargeResult {
   orderId: string;
   orderStatus: string;

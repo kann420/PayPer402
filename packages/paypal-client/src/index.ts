@@ -12,6 +12,7 @@ export {
 } from './errors';
 export { PayPalClient, mapCapture } from './client';
 export type {
+  CaptureDetails,
   CaptureResult,
   ChargeResult,
   ChargeVaultedWalletInput,

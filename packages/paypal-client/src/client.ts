@@ -2,6 +2,7 @@ import { resolveApiBase } from './config';
 import { PayPalApiError, PayPalNetworkError } from './errors';
 import { centsToUsdString, usdStringToCents } from './money';
 import type {
+  CaptureDetails,
   CaptureResult,
   ChargeResult,
   ChargeVaultedWalletInput,
@@ -181,6 +182,32 @@ export class PayPalClient {
   async getOrder(orderId: string): Promise<ChargeResult> {
     const path = `/v2/checkout/orders/${encodeURIComponent(orderId)}`;
     return this.mapOrder(await this.call('GET', path, { orders: true }), 'GET', path);
+  }
+
+  /** Reads one capture straight from PayPal (Payments v2), for an independent check of a charge. */
+  async getCapture(captureId: string): Promise<CaptureDetails> {
+    const path = `/v2/payments/captures/${encodeURIComponent(captureId)}`;
+    const json = await this.call('GET', path);
+    let capture: CaptureResult;
+    try {
+      capture = mapCapture(json);
+    } catch (err) {
+      throw new PayPalNetworkError('GET', path, 'capture response is malformed', { cause: err });
+    }
+    const currency = asString(asObject(json['amount'])?.['currency_code']);
+    if (currency === undefined) throw new PayPalNetworkError('GET', path, 'capture response has no currency');
+    const details: CaptureDetails = { ...capture, currency };
+    const invoiceId = asString(json['invoice_id']);
+    const customId = asString(json['custom_id']);
+    const orderId = asString(asObject(asObject(json['supplementary_data'])?.['related_ids'])?.['order_id']);
+    const createTime = asString(json['create_time']);
+    const updateTime = asString(json['update_time']);
+    if (invoiceId !== undefined) details.invoiceId = invoiceId;
+    if (customId !== undefined) details.customId = customId;
+    if (orderId !== undefined) details.orderId = orderId;
+    if (createTime !== undefined) details.createTime = createTime;
+    if (updateTime !== undefined) details.updateTime = updateTime;
+    return details;
   }
 
   /**
