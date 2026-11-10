@@ -1,6 +1,6 @@
 {
   "name": "@payper402/agent",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "PayPer402 demo agent: a Claude agent and an MCP server that pay per call over HTTP 402.",
   "license": "MIT",
@@ -15,6 +15,7 @@
     "payper402": "tsx --env-file-if-exists=../../.env src/payper402.ts",
     "demo": "tsx --env-file-if-exists=../../.env scripts/demo.ts",
     "eval:spend-check": "tsx --env-file-if-exists=../../.env scripts/eval-spend-check.ts",
+    "build:npm": "tsx scripts/build-npm.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {

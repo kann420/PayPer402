@@ -9,7 +9,20 @@ import { getAgentStatus, redeemClaim, type ApiResult } from './facilitator-api';
 import { startMcpStdio } from './mcp';
 import { formatStatus } from './status-format';
 
-export const DEFAULT_API_URL = 'http://localhost:4020';
+/**
+ * Set only by the npm build (`npm run build:npm -w apps/agent`), never in the repository. The
+ * published package defaults to the hosted facilitator and calls itself `npx payper402`.
+ */
+declare const __PAYPER402_NPM_API__: string | undefined;
+
+const NPM_API = typeof __PAYPER402_NPM_API__ === 'string' ? __PAYPER402_NPM_API__ : undefined;
+
+export const DEFAULT_API_URL = NPM_API ?? 'http://localhost:4020';
+
+/** How the user types this command: `payper402` from a clone, `npx payper402` from npm. */
+const CMD = NPM_API === undefined ? 'payper402' : 'npx payper402';
+/** The command Claude Code starts for the MCP server. */
+const MCP_RUN = NPM_API === undefined ? 'payper402 mcp' : 'npx -y payper402 mcp';
 
 export interface Payper402Deps extends CliDeps {
   /** Unix seconds, for the config's `createdAt` and the status signature. Defaults to the system clock. */
@@ -28,23 +41,25 @@ class CommandError extends Error {
   override readonly name = 'CommandError';
 }
 
-const usage = (env: Record<string, string | undefined>) =>
-  [
+const usage = (env: Record<string, string | undefined>) => {
+  const pad = ' '.repeat(CMD.length - 'payper402'.length);
+  return [
     'payper402 - pay-per-call for AI agents, settled with PayPal',
     '',
     'Usage:',
-    '  payper402 onboard --claim <code> [--api <url>] [--seller <url>] [--force]',
-    '                              Connect this machine as an agent, with a claim code from the web app',
-    '  payper402 status [--json]   Show what this agent may spend now, and why it is blocked if it is',
-    '  payper402 mcp [--budget <usd>] [--max-per-call <usd>]',
-    '                              Start the MCP server over stdio',
-    '  payper402 run [--budget <usd>] [--max-per-call <usd>] [--no-spend-check] "<task>"',
-    '                              Run the Claude agent on a task',
-    '  payper402 version           Print the version',
-    '  payper402 help              Show this message',
+    `  ${CMD} onboard --claim <code> [--api <url>] [--seller <url>] [--force]`,
+    `                              ${pad}Connect this machine as an agent, with a claim code from the web app`,
+    `  ${CMD} status [--json]   Show what this agent may spend now, and why it is blocked if it is`,
+    `  ${CMD} mcp [--budget <usd>] [--max-per-call <usd>]`,
+    `                              ${pad}Start the MCP server over stdio`,
+    `  ${CMD} run [--budget <usd>] [--max-per-call <usd>] [--no-spend-check] "<task>"`,
+    `                              ${pad}Run the Claude agent on a task`,
+    `  ${CMD} version           Print the version`,
+    `  ${CMD} help              Show this message`,
     '',
     `Config: ${configPath(env)}`,
   ];
+};
 
 /** The `apps/agent` package version. */
 async function packageVersion(): Promise<string> {
@@ -80,14 +95,14 @@ function failureMessage(result: Extract<ApiResult<unknown>, { ok: false }>, api:
   return `PayPer402 answered ${result.status}. Try again.`;
 }
 
-const NOT_CONNECTED = 'This machine is not connected. Run payper402 onboard --claim <code> first.';
+const NOT_CONNECTED = `This machine is not connected. Run ${CMD} onboard --claim <code> first.`;
 
 /** The config file, or a `CommandError` that says what to do. */
 async function requireConfig(env: Record<string, string | undefined>) {
   const read = await readCliConfig(env);
   if (read.ok) return read;
   if (read.reason === 'missing') throw new CommandError(NOT_CONNECTED);
-  throw new CommandError(`The config at ${configPath(env)} is invalid. Run payper402 onboard --force.`);
+  throw new CommandError(`The config at ${configPath(env)} is invalid. Run ${CMD} onboard --force.`);
 }
 
 async function onboard(args: string[], env: Record<string, string | undefined>, io: CliIo, deps: Payper402Deps): Promise<number> {
@@ -155,8 +170,8 @@ async function onboard(args: string[], env: Record<string, string | undefined>, 
   io.out(`Your private key stays on this machine: ${configPath(env)}`);
   io.out('');
   io.out('Next:');
-  io.out('  payper402 status');
-  io.out(`  claude mcp add payper402 -- ${windows ? 'cmd /c ' : ''}payper402 mcp`);
+  io.out(`  ${CMD} status`);
+  io.out(`  claude mcp add -s user payper402 -- ${windows ? 'cmd /c ' : ''}${MCP_RUN}`);
   return 0;
 }
 
@@ -172,7 +187,7 @@ async function status(args: string[], env: Record<string, string | undefined>, i
   });
   if (!result.ok) {
     if (result.kind === 'http' && result.status === 401) {
-      throw new CommandError("PayPer402 does not recognise this agent's key. Create a new claim code and run payper402 onboard --force.");
+      throw new CommandError(`PayPer402 does not recognise this agent's key. Create a new claim code and run ${CMD} onboard --force.`);
     }
     throw new CommandError(failureMessage(result, config.facilitatorUrl));
   }

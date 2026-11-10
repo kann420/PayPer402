@@ -121,7 +121,7 @@ describe('payper402', () => {
         '',
         'Next:',
         '  payper402 status',
-        '  claude mcp add payper402 -- payper402 mcp',
+        '  claude mcp add -s user payper402 -- payper402 mcp',
       ]);
       expect(config).toMatchObject({
         version: 1,
@@ -147,7 +147,7 @@ describe('payper402', () => {
 
     it('prints the Windows line on win32', async () => {
       expect(await run(['onboard', '--claim', await issue(), '--api', await h.url()], { platform: 'win32' })).toBe(0);
-      expect(out.at(-1)).toBe('  claude mcp add payper402 -- cmd /c payper402 mcp');
+      expect(out.at(-1)).toBe('  claude mcp add -s user payper402 -- cmd /c payper402 mcp');
     });
 
     it('lets --seller override the stored seller URL, and uses the default when neither is set', async () => {

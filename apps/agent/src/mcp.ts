@@ -9,7 +9,7 @@ import { openSession, type AgentSession } from './session';
 import { createToolCore } from './tools';
 
 export const MCP_SERVER_NAME = 'payper402';
-export const MCP_SERVER_VERSION = '0.0.0';
+export const MCP_SERVER_VERSION = '0.1.0';
 
 export interface McpServerOptions {
   /** Where events are logged, one line each. Defaults to stderr: stdout carries only the protocol. */
