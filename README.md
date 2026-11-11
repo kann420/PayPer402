@@ -18,8 +18,8 @@ Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com) (Octo
 
 ## The problem
 
-AI agents increasingly need to buy things on their own: a market quote, a page summary, a
-translation. Each one is worth a few cents. Today an agent cannot pay a few cents per call:
+AI agents increasingly need to buy things on their own: a hotel rate, a review summary, a
+walking time. Each one is worth a few cents. Today an agent cannot pay a few cents per call:
 
 - API subscriptions and prepaid keys need a human to sign up for every provider in advance.
 - Card and wallet checkouts need a human in the loop for every purchase.
@@ -63,9 +63,9 @@ operators and API sellers do not want to hold stablecoins; they already have Pay
 - **A terminal command and an MCP server.** `payper402 onboard` connects an agent with a claim code
   from the web app. The agent's key is generated locally and never leaves the machine.
   `payper402 mcp` lets Claude Code or Claude Desktop pay per call through PayPer402.
-- **A demo seller.** "Acme Data" sells four paid APIs, priced from 1 to 25 cents. Its market data and
-  news are simulated and labelled as such in every response; the payments for them are real sandbox
-  payments.
+- **A demo seller.** "Acme Data" sells five paid travel APIs, priced from 1 to 25 cents. Its hotel data
+  and reviews are simulated and labelled as such in every response; the payments for them are real
+  sandbox payments.
 
 ## Judging criteria
 
@@ -136,7 +136,7 @@ payer's PayPal account, and the agreement being stopped.
 | Demo agent | Claude (Anthropic SDK, tool use, adaptive thinking) | Plans within a budget, discovers 402 prices, pays, answers, explains its spending |
 | Decision layer | Jev `jev-1.14.0` (TypeSafe) | Probabilities that a call serves the task and that its result is already covered; thresholds come from a labelled evaluation |
 | Dashboards | Claude behind a server route, in AG Studio | A read-only analyst over spend, settlements and revenue |
-| Demo seller | Claude | The paid summary and translation APIs |
+| Demo seller | Claude | The paid review summary API |
 
 Payment tools never accept free-form amounts, URLs or recipients from the model: services are
 named by catalog ids, and every price is checked against the catalog, the per-call limit and the
@@ -167,7 +167,7 @@ flowchart LR
 | `packages/scheme-paypal` | The x402 binding: client, server and facilitator plug-ins for `paypal:sandbox` |
 | `packages/paypal-client` | Typed PayPal REST client (OAuth, Vault v3, Orders v2, Webhooks), sandbox only |
 | `apps/facilitator` | Verify, settle, ledger, caps, settlement job, revocation, webhooks |
-| `apps/demo-seller` | Four paid APIs behind `@x402/express` |
+| `apps/demo-seller` | Five paid APIs behind `@x402/express` |
 | `apps/agent` | The Claude agent, the decision layer, the MCP server and the `payper402` command |
 | `apps/web` | Landing, onboarding, operator and seller consoles |
 | `docs/spec` | The PayPal binding spec |
@@ -273,7 +273,7 @@ claude mcp add -s user payper402 -- cmd /c npx -y payper402 mcp
 To run the built-in Claude agent on a task instead (needs `ANTHROPIC_API_KEY`):
 
 ```bash
-npx payper402 run --budget 0.50 "Brief me on today's coffee market"
+npx payper402 run --budget 0.50 "Find a quiet hotel in Kyoto near Gion for March 30 to April 2, 2027"
 ```
 
 The agent's private key lives in `~/.payper402/config.json` (`PAYPER402_HOME` changes the folder).
