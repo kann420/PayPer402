@@ -33,7 +33,7 @@ export const SYSTEM_PROMPT = [
 ].join('\n');
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
-export const DEFAULT_MAX_ITERATIONS = 12;
+export const DEFAULT_MAX_ITERATIONS = 20;
 export const MAX_TOKENS = 16_000;
 export const AGENT_BETAS = ['thinking-display-updates-2026-08-18', 'server-side-fallback-2026-07-01'] as const;
 export const REFUSED_ANSWER = 'The model declined this task.';

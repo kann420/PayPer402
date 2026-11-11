@@ -64,8 +64,8 @@ describe('runCli with the decision layer on', () => {
   it('checks each paid call with the default policy and prints the summary line', async () => {
     env = await startDemoEnv();
     const fake = fakeAnthropic([
-      message([toolUse('call_service', { service_id: 'quote', params: { symbol: 'KC' }, reason: 'Price' })]),
-      message([toolUse('finish', { answer: 'Coffee is up.', spend_explanation: 'One quote.' })]),
+      message([toolUse('call_service', { service_id: 'hotel_rates', params: { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, reason: 'Price' })]),
+      message([toolUse('finish', { answer: 'The Stone Garden Inn fits.', spend_explanation: 'One rate check.' })]),
     ]);
     const captured = io();
     const code = await runCli(
@@ -77,7 +77,7 @@ describe('runCli with the decision layer on', () => {
     expect(code).toBe(0);
     expect(captured.out[0]).toBe(describeDecisionLayer({ on: true, model: 'jev-test', policy: DEFAULT_SPEND_POLICY }));
     const decided = captured.out.filter((line) => line.startsWith('[decide]'));
-    expect(decided).toEqual(['[decide] call_1 pay $0.02 for Market Quote API: Price (left after this: $0.48) | Jev: serves task 0.90, covered 0.05']);
+    expect(decided).toEqual(['[decide] call_1 pay $0.01 for Room Rates API: Price (left after this: $0.49) | Jev: serves task 0.90, covered 0.05']);
     expect(captured.out.join('\n')).toContain('Decision layer: Jev (jev-test): 1 passed, 0 blocked, 0 flagged, 0 unavailable');
     expect(captured.out.join('\n')).not.toContain('k-1');
   });

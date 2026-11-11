@@ -452,12 +452,12 @@ describe('payper402', () => {
     it('runs the agent with the config key and seller URL, ignoring AGENT_PRIVATE_KEY', async () => {
       await writeCliConfig(env, configFor(demo.key, demo.url));
       const fake = fakeAnthropic([
-        message([toolUse('call_service', { service_id: 'quote', params: { symbol: 'KC' }, reason: 'Current coffee price' })]),
-        message([toolUse('finish', { answer: 'Coffee is quoted.', spend_explanation: 'I bought one quote.' })]),
+        message([toolUse('call_service', { service_id: 'hotel_rates', params: { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, reason: 'Rates for the stay' })]),
+        message([toolUse('finish', { answer: 'The Stone Garden Inn fits.', spend_explanation: 'I bought one rate check.' })]),
       ]);
       const other = exportPrivateKeyRaw(generateAgentKey().privateKey);
       const code = await runPayper402(
-        ['run', '--budget', '0.50', 'What', 'is', 'coffee', 'at?'],
+        ['run', '--budget', '0.50', 'Find', 'a', 'hotel', 'in', 'Kyoto'],
         { ...env, AGENT_PRIVATE_KEY: other, SELLER_URL: 'http://127.0.0.1:1' },
         io,
         { anthropic: fake.client },
@@ -465,11 +465,11 @@ describe('payper402', () => {
       expect(err).toEqual([]);
       expect(code).toBe(0);
       expect(out).toContain('[result] completed');
-      expect(out.join('\n')).toContain('Coffee is quoted.');
+      expect(out.join('\n')).toContain('The Stone Garden Inn fits.');
       // The demo seller's facilitator accepted a commitment signed by the config key.
       expect(demo.ledger.all().map((c) => c.kid)).toEqual([demo.key.kid]);
       // The task words reached the model.
-      expect(JSON.stringify(fake.requests[0]?.body)).toContain('What is coffee at?');
+      expect(JSON.stringify(fake.requests[0]?.body)).toContain('Find a hotel in Kyoto');
     });
 
     it('needs a config, and reports configuration errors from the agent CLI', async () => {
@@ -499,7 +499,7 @@ describe('payper402', () => {
       const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
       const started = await startMcpStdio(config, (line) => logged.push(line), serverSide);
       expect(started.ok).toBe(true);
-      expect(logged).toEqual(['PayPer402 MCP server ready: Acme Data, 4 services']);
+      expect(logged).toEqual(['PayPer402 MCP server ready: Acme Data, 5 services']);
       const client = new Client({ name: 'test', version: '0.0.0' });
       await client.connect(clientSide);
       try {
@@ -539,19 +539,19 @@ describe('payper402', () => {
         maxPerCallCents: 10,
         nowSeconds: () => h.clock.now,
       });
-      const outcome = await session.call('quote', { symbol: 'KC' }, 'Current coffee price');
+      const outcome = await session.call('hotel_rates', { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, 'Rates for the stay');
       expect(outcome.ok).toBe(true);
-      expect(h.db.prepare('SELECT agent_id, amount FROM commitments').all()).toEqual([{ agent_id: config.agent.id, amount: 2 }]);
+      expect(h.db.prepare('SELECT agent_id, amount FROM commitments').all()).toEqual([{ agent_id: config.agent.id, amount: 1 }]);
 
       out.length = 0;
       expect(await run(['status'])).toBe(0);
-      expect(out).toContain('Today        $0.02 spent, $9.98 left (this agent: $0.02 in 1 call)');
-      expect(out).toContain('Not charged  $0.02 in 1 call');
+      expect(out).toContain('Today        $0.01 spent, $9.99 left (this agent: $0.01 in 1 call)');
+      expect(out).toContain('Not charged  $0.01 in 1 call');
       expect(out).toContain('State        Ready to pay');
 
       out.length = 0;
       expect(await run(['status', '--json'])).toBe(0);
-      expect(JSON.parse(out.join('\n'))).toMatchObject({ agent: { id: config.agent.id, spentToday: 2, callsToday: 1 } });
+      expect(JSON.parse(out.join('\n'))).toMatchObject({ agent: { id: config.agent.id, spentToday: 1, callsToday: 1 } });
     });
   });
 });

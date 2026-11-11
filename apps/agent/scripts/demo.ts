@@ -35,7 +35,7 @@ import { formatUsd } from '../src/tools';
 
 const LINK_TIMEOUT_MS = 10 * 60 * 1000;
 const POLL_MS = 3000;
-const AGENT_NAME = 'research-bot';
+const AGENT_NAME = 'trip-planner';
 const KEY_LABEL = 'demo-run';
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 

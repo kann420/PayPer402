@@ -145,7 +145,7 @@ claude mcp add -s user payper402 -- cmd /c npx -y payper402 mcp
 Run the built-in Claude agent on a task (needs \`ANTHROPIC_API_KEY\`):
 
 \`\`\`bash
-npx payper402 run --budget 0.50 "Brief me on today's coffee market"
+npx payper402 run --budget 0.50 "Find a quiet hotel in Kyoto near Gion for March 30 to April 2, 2027"
 \`\`\`
 
 Spending is always bounded by the limits the operator set in the web app.

@@ -30,6 +30,6 @@ describe('decision-layer configuration', () => {
   });
 
   it('the --no-spend-check flag does not leak into the task', () => {
-    expect(loadAgentConfig({ AGENT_PRIVATE_KEY: raw }, ['--no-spend-check', 'What', 'is', 'cocoa?']).task).toBe('What is cocoa?');
+    expect(loadAgentConfig({ AGENT_PRIVATE_KEY: raw }, ['--no-spend-check', 'What', 'is', 'Kyoto?']).task).toBe('What is Kyoto?');
   });
 });

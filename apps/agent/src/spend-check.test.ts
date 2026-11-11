@@ -19,8 +19,8 @@ import {
 } from './spend-check';
 
 const input = (overrides: Partial<SpendCheckInput> = {}): SpendCheckInput => ({
-  task: 'Brief me on coffee.',
-  call: { serviceName: 'Market Quote API', serviceDescription: 'Latest futures price.', params: { symbol: 'KC' } },
+  task: 'Find a quiet hotel in Kyoto.',
+  call: { serviceName: 'Room Rates API', serviceDescription: 'Nightly rates for a hotel.', params: { hotelId: 'gion-lantern-house' } },
   earlier: [],
   ...overrides,
 });
@@ -57,11 +57,11 @@ describe('cut and the state', () => {
 
   it('uses the field names of design spec §4.4', () => {
     const state = buildSpendCheckState(
-      input({ earlier: [{ serviceName: 'Market Quote API', params: { symbol: 'KC' }, resultExcerpt: '{"price":1}' }] }),
+      input({ earlier: [{ serviceName: 'Room Rates API', params: { hotelId: 'gion-lantern-house' }, resultExcerpt: '{"price":1}' }] }),
     );
     expect(JSON.stringify(state)).toBe(
-      '{"task":"Brief me on coffee.","proposed_call":{"service":"Market Quote API","description":"Latest futures price.","params":{"symbol":"KC"}},' +
-        '"earlier_results":[{"service":"Market Quote API","params":{"symbol":"KC"},"result_excerpt":"{\\"price\\":1}"}]}',
+      '{"task":"Find a quiet hotel in Kyoto.","proposed_call":{"service":"Room Rates API","description":"Nightly rates for a hotel.","params":{"hotelId":"gion-lantern-house"}},' +
+        '"earlier_results":[{"service":"Room Rates API","params":{"hotelId":"gion-lantern-house"},"result_excerpt":"{\\"price\\":1}"}]}',
     );
   });
 

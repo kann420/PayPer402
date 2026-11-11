@@ -4,7 +4,8 @@ import { importPrivateKeyJwk, importPrivateKeyRaw, isValidCents, priceToCents, t
 import { DEFAULT_MODEL } from './agent';
 import type { DecisionLayerWant } from './spend-check';
 
-export const DEFAULT_TASK = "Brief me on today's coffee market: current price, top news, and a summary in Vietnamese.";
+export const DEFAULT_TASK =
+  'Find me a quiet hotel in Kyoto near Gion for cherry blossom season, March 30 to April 2, 2027, under $250 a night. Walking distance to Kiyomizu-dera is a plus.';
 export const DEFAULT_SELLER_URL = 'http://localhost:4021';
 export const DEFAULT_BUDGET = '1.00';
 export const DEFAULT_MAX_PER_CALL = '0.10';

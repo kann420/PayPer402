@@ -18,9 +18,9 @@ interface Recorded {
 }
 
 const input: SpendCheckInput = {
-  task: 'Brief me on coffee.',
-  call: { serviceName: 'Market Quote API', serviceDescription: 'Latest futures price.', params: { symbol: 'KC' } },
-  earlier: [{ serviceName: 'Page Summary API', params: { url: 'http://localhost:4021/news/a' }, resultExcerpt: '{"summary":"s"}' }],
+  task: 'Find a quiet hotel in Kyoto.',
+  call: { serviceName: 'Room Rates API', serviceDescription: 'Nightly rates for a hotel.', params: { hotelId: 'gion-lantern-house' } },
+  earlier: [{ serviceName: 'Review Summary API', params: { hotelId: 'gion-lantern-house', focus: 'noise' }, resultExcerpt: '{"summary":"s"}' }],
 };
 
 const okBody = {
@@ -69,9 +69,9 @@ describe('createJevSpendCheck', () => {
     expect(Object.keys(body).sort()).toEqual(['model', 'questions', 'state']);
     expect(body['model']).toBe('jev-1.14.0');
     expect(body['state']).toEqual({
-      task: 'Brief me on coffee.',
-      proposed_call: { service: 'Market Quote API', description: 'Latest futures price.', params: { symbol: 'KC' } },
-      earlier_results: [{ service: 'Page Summary API', params: { url: 'http://localhost:4021/news/a' }, result_excerpt: '{"summary":"s"}' }],
+      task: 'Find a quiet hotel in Kyoto.',
+      proposed_call: { service: 'Room Rates API', description: 'Nightly rates for a hotel.', params: { hotelId: 'gion-lantern-house' } },
+      earlier_results: [{ service: 'Review Summary API', params: { hotelId: 'gion-lantern-house', focus: 'noise' }, result_excerpt: '{"summary":"s"}' }],
     });
     expect(body['questions']).toEqual({
       serves_task: {

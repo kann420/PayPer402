@@ -18,25 +18,26 @@ function sessionFor(e: Env, options: Partial<OpenSessionOptions> = {}) {
 }
 
 const types = (events: readonly AgentEvent[]) => events.map((e) => e.type);
-const articleUrl = (e: Env) => `${e.url}/news/coffee-highland-rains-delay-harvest`;
+const S = { city: 'kyoto', checkIn: '2027-03-30', checkOut: '2027-04-02' };
+const HOTEL = { hotelId: 'gion-lantern-house' };
 
 describe('paid calls against the demo seller', () => {
   it('happy path: discovered_price, decided, paid, with the ledger id and running totals', async () => {
     env = await startDemoEnv();
     const session = await sessionFor(env);
-    const quote = await session.call('quote', { symbol: 'KC' }, 'Need the current coffee price');
-    expect(quote).toMatchObject({ ok: true, serviceId: 'quote', paidCents: 2 });
-    const summary = await session.call('summarize', { url: articleUrl(env) }, 'Top news');
-    expect(summary).toMatchObject({ ok: true, paidCents: 5 });
+    const search = await session.call('hotel_search', S, 'Need the search results');
+    expect(search).toMatchObject({ ok: true, serviceId: 'hotel_search', paidCents: 2 });
+    const reviews = await session.call('review_summary', HOTEL, 'Reviews');
+    expect(reviews).toMatchObject({ ok: true, paidCents: 5 });
     expect(types(session.events)).toEqual(['discovered_price', 'decided', 'paid', 'discovered_price', 'decided', 'paid']);
     const [discovered, decided, paid] = session.events;
-    expect(discovered).toMatchObject({ callId: 'call_1', serviceId: 'quote', serviceName: 'Market Quote API', priceCents: 2, catalogPriceCents: 2 });
-    expect(decided).toMatchObject({ callId: 'call_1', priceCents: 2, note: 'Need the current coffee price', remainingCents: 98 });
+    expect(discovered).toMatchObject({ callId: 'call_1', serviceId: 'hotel_search', serviceName: 'Hotel Search API', priceCents: 2, catalogPriceCents: 2 });
+    expect(decided).toMatchObject({ callId: 'call_1', priceCents: 2, note: 'Need the search results', remainingCents: 98 });
     const records = env.ledger.all();
     expect(paid).toMatchObject({ callId: 'call_1', amountCents: 2, commitmentId: records[0]?.id, httpStatus: 200, spentCents: 2, remainingCents: 98 });
     expect(session.events[5]).toMatchObject({ callId: 'call_2', amountCents: 5, commitmentId: records[1]?.id, spentCents: 7, remainingCents: 93 });
-    expect(quote.ok && quote.commitmentId).toBe(records[0]?.id);
-    expect(quote.ok && (quote.data as { symbol: string }).symbol).toBe('KC');
+    expect(search.ok && search.commitmentId).toBe(records[0]?.id);
+    expect(search.ok && (search.data as { city: string }).city).toBe('kyoto');
     for (const event of session.events) expect(typeof event.at).toBe('number');
   });
 
@@ -44,19 +45,19 @@ describe('paid calls against the demo seller', () => {
     env = await startDemoEnv();
     const spy = fetchSpy();
     const session = await sessionFor(env, { fetch: spy.fetch, budgetCents: 6, maxPerCallCents: 5 });
-    expect(await session.call('premium_news', { topic: 'coffee' }, 'Full coverage')).toMatchObject({
+    expect(await session.call('price_forecast', S, 'Full coverage')).toMatchObject({
       ok: false,
       error: 'refused',
       code: 'over_per_call_limit',
       message: 'Over the per-call limit',
     });
-    expect(await session.call('summarize', { url: articleUrl(env) }, 'News')).toMatchObject({ ok: true });
+    expect(await session.call('review_summary', HOTEL, 'Reviews')).toMatchObject({ ok: true });
     expect(spy.calls).toHaveLength(2);
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: false, code: 'over_budget' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: false, code: 'over_budget' });
     expect(spy.calls).toHaveLength(2);
     expect(session.events.filter((e) => e.type === 'refused')).toEqual([
-      expect.objectContaining({ code: 'over_per_call_limit', by: 'agent', note: 'Over the per-call limit', serviceId: 'premium_news' }),
-      expect.objectContaining({ code: 'over_budget', by: 'agent', note: 'Over the run budget', serviceId: 'quote' }),
+      expect.objectContaining({ code: 'over_per_call_limit', by: 'agent', note: 'Over the per-call limit', serviceId: 'price_forecast' }),
+      expect.objectContaining({ code: 'over_budget', by: 'agent', note: 'Over the run budget', serviceId: 'hotel_search' }),
     ]);
   });
 
@@ -65,7 +66,7 @@ describe('paid calls against the demo seller', () => {
     const spy = fetchSpy();
     const session = await sessionFor(env, { fetch: spy.fetch });
     expect(await session.call('nope', {}, 'x')).toMatchObject({ ok: false, error: 'unknown_service' });
-    expect(await session.call('quote', { symbol: 'KC', extra: 1 }, 'x')).toMatchObject({
+    expect(await session.call('hotel_search', { ...S, extra: 1 }, 'x')).toMatchObject({
       ok: false,
       error: 'invalid_params',
       issues: [{ param: 'extra', message: 'unknown param' }],
@@ -78,7 +79,7 @@ describe('paid calls against the demo seller', () => {
     it('cap_exceeded', async () => {
       env = await startDemoEnv({ caps: { perCall: 1, daily: 1000, unsettled: 1000 } });
       const session = await sessionFor(env);
-      expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: false, error: 'refused', code: 'cap_exceeded' });
+      expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: false, error: 'refused', code: 'cap_exceeded' });
       expect(session.events.at(-1)).toMatchObject({ type: 'refused', code: 'cap_exceeded', by: 'facilitator', note: "Over the operator's spending limit" });
       expect(session.budget()).toMatchObject({ reservedCents: 0, spentCents: 0, remainingCents: 100 });
       expect(session.blocked).toBe(false);
@@ -89,11 +90,11 @@ describe('paid calls against the demo seller', () => {
       env.registry.setWalletStatus(OPERATOR, 'revoked');
       const spy = fetchSpy();
       const session = await sessionFor(env, { fetch: spy.fetch });
-      expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ code: 'wallet_revoked' });
+      expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ code: 'wallet_revoked' });
       expect(session.events.at(-1)).toMatchObject({ note: "Payment required: the operator's PayPal link was stopped." });
       expect(session.blocked).toBe(true);
       const requests = spy.calls.length;
-      expect(await session.call('quote', { symbol: 'CC' }, 'Price')).toMatchObject({ ok: false, error: 'payments_blocked' });
+      expect(await session.call('hotel_search', { ...S, area: 'gion' }, 'Price')).toMatchObject({ ok: false, error: 'payments_blocked' });
       expect(spy.calls).toHaveLength(requests);
       expect(session.events.filter((e) => e.type === 'refused')).toHaveLength(1);
     });
@@ -102,14 +103,14 @@ describe('paid calls against the demo seller', () => {
       env = await startDemoEnv();
       env.registry.setAgentStatus(env.key.kid, 'disabled');
       const session = await sessionFor(env);
-      expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ code: 'agent_disabled', message: 'This agent is paused' });
+      expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ code: 'agent_disabled', message: 'This agent is paused' });
       expect(session.blocked).toBe(true);
     });
 
     it('unknown_agent', async () => {
       env = await startDemoEnv();
       const session = await sessionFor(env, { privateKey: generateAgentKey().privateKey });
-      expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ code: 'unknown_agent' });
+      expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ code: 'unknown_agent' });
       expect(session.blocked).toBe(true);
       expect(env.ledger.size).toBe(0);
     });
@@ -118,10 +119,10 @@ describe('paid calls against the demo seller', () => {
   it('a 400 after a valid payment: failed, charged no, released, no ledger record', async () => {
     env = await startDemoEnv();
     const session = await sessionFor(env);
-    expect(await session.call('summarize', { url: 'https://elsewhere.example/news/x' }, 'News')).toMatchObject({
+    expect(await session.call('hotel_rates', { hotelId: 'gion-lantern-house', checkIn: '2027-04-02', checkOut: '2027-03-30' }, 'Rates')).toMatchObject({
       ok: false,
       error: 'failed',
-      message: 'The service answered HTTP 400 (unsupported_url)',
+      message: 'The service answered HTTP 400 (validation_failed)',
     });
     expect(session.events.at(-1)).toMatchObject({ type: 'failed', charged: 'no', callId: 'call_1' });
     expect(session.budget()).toMatchObject({ reservedCents: 0, spentCents: 0, uncertainCents: 0, remainingCents: 100 });
@@ -132,7 +133,7 @@ describe('paid calls against the demo seller', () => {
     env = await startDemoEnv();
     env.ai.fail = true;
     const session = await sessionFor(env);
-    expect(await session.call('translate', { text: 'Hi', targetLanguage: 'vi' }, 'Translate')).toMatchObject({
+    expect(await session.call('review_summary', HOTEL, 'Reviews')).toMatchObject({
       message: 'The service answered HTTP 503 (ai_unavailable)',
     });
     expect(session.events.at(-1)).toMatchObject({ type: 'failed', charged: 'no' });
@@ -147,7 +148,7 @@ describe('paid calls against the demo seller', () => {
       return res;
     });
     const session = await sessionFor(env, { fetch: spy.fetch });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: false, error: 'failed', message: 'The payment outcome is unknown' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: false, error: 'failed', message: 'The payment outcome is unknown' });
     expect(session.events.at(-1)).toMatchObject({ type: 'failed', charged: 'unknown' });
     expect(session.budget()).toMatchObject({ uncertainCents: 2, spentCents: 0, remainingCents: 98 });
     expect(session.report().uncertainCents).toBe(2);
@@ -159,7 +160,7 @@ describe('paid calls against the demo seller', () => {
       new Headers(init?.headers).has('PAYMENT-SIGNATURE') ? res : withHeaders(res, (h) => h.delete('PAYMENT-REQUIRED')),
     );
     const session = await sessionFor(env, { fetch: spy.fetch });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ message: 'The service sent an unreadable 402' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ message: 'The service sent an unreadable 402' });
     expect(session.events).toEqual([expect.objectContaining({ type: 'failed', charged: 'no' })]);
     expect(session.budget().reservedCents).toBe(0);
     expect(spy.calls).toHaveLength(1);
@@ -175,7 +176,7 @@ describe('paid calls against the demo seller', () => {
       });
     });
     const session = await sessionFor(env, { fetch: spy.fetch });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: true, paidCents: 2 });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: true, paidCents: 2 });
     expect(types(session.events)).toEqual(['discovered_price', 'decided', 'paid', 'failed']);
     expect(session.events[2]).toMatchObject({ amountCents: 2, spentCents: 2 });
     expect(session.events[3]).toMatchObject({ note: 'The seller reported a higher amount than the signed maximum', callId: 'call_1' });
@@ -188,7 +189,7 @@ describe('paid calls against the demo seller', () => {
       new Headers(init?.headers).has('PAYMENT-SIGNATURE') ? withHeaders(res, (h) => h.delete('PAYMENT-RESPONSE')) : res,
     );
     const session = await sessionFor(env, { fetch: spy.fetch });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: true, paidCents: 2, commitmentId: null });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: true, paidCents: 2, commitmentId: null });
     expect(session.events.at(-1)).toMatchObject({ type: 'paid', amountCents: 2, commitmentId: null });
     expect(session.report().commitmentIds).toEqual([]);
   });
@@ -196,7 +197,7 @@ describe('paid calls against the demo seller', () => {
   it('parallel calls never exceed the budget', async () => {
     env = await startDemoEnv();
     const session = await sessionFor(env, { budgetCents: 7, maxPerCallCents: 5 });
-    const results = await Promise.all(Array.from({ length: 10 }, () => session.call('quote', { symbol: 'KC' }, 'Price')));
+    const results = await Promise.all(Array.from({ length: 10 }, () => session.call('hotel_search', S, 'Price')));
     expect(results.filter((r) => r.ok)).toHaveLength(3);
     expect(results.filter((r) => !r.ok && r.code === 'over_budget')).toHaveLength(7);
     expect(session.budget()).toMatchObject({ spentCents: 6, reservedCents: 0, remainingCents: 1 });
@@ -206,11 +207,11 @@ describe('paid calls against the demo seller', () => {
   it('the report: lines, notUsed, refusals, commitment ids, and numbers equal to the event sums', async () => {
     env = await startDemoEnv();
     const session = await sessionFor(env);
-    await session.call('quote', { symbol: 'KC' }, 'Price');
-    await session.call('quote', { symbol: 'CC' }, 'Price');
-    await session.call('summarize', { url: articleUrl(env) }, 'News');
-    await session.call('premium_news', { topic: 'coffee' }, 'Full');
-    const report = session.report('I bought a quote and a summary.');
+    await session.call('hotel_search', S, 'Price');
+    await session.call('hotel_search', { ...S, area: 'gion' }, 'Price');
+    await session.call('review_summary', HOTEL, 'Reviews');
+    await session.call('price_forecast', S, 'Full');
+    const report = session.report('I bought a search and a review summary.');
     const paid = session.events.filter((e): e is Extract<AgentEvent, { type: 'paid' }> => e.type === 'paid');
     expect(report).toEqual({
       sellerName: 'Acme Data',
@@ -219,16 +220,17 @@ describe('paid calls against the demo seller', () => {
       uncertainCents: 0,
       remainingCents: 91,
       lines: [
-        { serviceId: 'quote', serviceName: 'Market Quote API', calls: 2, unitPriceCents: 2, totalCents: 4 },
-        { serviceId: 'summarize', serviceName: 'Page Summary API', calls: 1, unitPriceCents: 5, totalCents: 5 },
+        { serviceId: 'hotel_search', serviceName: 'Hotel Search API', calls: 2, unitPriceCents: 2, totalCents: 4 },
+        { serviceId: 'review_summary', serviceName: 'Review Summary API', calls: 1, unitPriceCents: 5, totalCents: 5 },
       ],
       notUsed: [
-        { serviceId: 'translate', serviceName: 'Translate API', priceCents: 1 },
-        { serviceId: 'premium_news', serviceName: 'Premium News API', priceCents: 25 },
+        { serviceId: 'hotel_rates', serviceName: 'Room Rates API', priceCents: 1 },
+        { serviceId: 'walking_time', serviceName: 'Walking Time API', priceCents: 1 },
+        { serviceId: 'price_forecast', serviceName: 'Price Forecast API (premium)', priceCents: 25 },
       ],
-      refusals: [{ serviceId: 'premium_news', code: 'over_per_call_limit' }],
+      refusals: [{ serviceId: 'price_forecast', code: 'over_per_call_limit' }],
       commitmentIds: env.ledger.all().map((r) => r.id),
-      explanation: 'I bought a quote and a summary.',
+      explanation: 'I bought a search and a review summary.',
     });
     expect(report.spentCents).toBe(paid.reduce((sum, e) => sum + e.amountCents, 0));
     expect(report.lines.reduce((sum, l) => sum + l.totalCents, 0)).toBe(report.spentCents);
@@ -243,7 +245,7 @@ describe('paid calls against the demo seller', () => {
         throw new Error('observer bug');
       },
     });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: true });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: true });
     expect(seen).toEqual(['discovered_price', 'decided', 'paid']);
   });
 });
@@ -251,10 +253,10 @@ describe('paid calls against the demo seller', () => {
 describe('paid calls against test sellers', () => {
   it('price_changed: the 402 asks more than the catalog says', async () => {
     env = await startCustomEnv([
-      { service: demoService('quote'), accepts: { price: { asset: 'USD', amount: '3' } }, handler: (_req, res) => void res.json({}) },
+      { service: demoService('hotel_search'), accepts: { price: { asset: 'USD', amount: '3' } }, handler: (_req, res) => void res.json({}) },
     ]);
     const session = await sessionFor(env);
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ code: 'price_changed' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ code: 'price_changed' });
     expect(types(session.events)).toEqual(['discovered_price', 'refused']);
     expect(session.events[0]).toMatchObject({ priceCents: 3, catalogPriceCents: 2 });
     expect(session.events[1]).toMatchObject({ by: 'agent', note: 'The price asked is higher than the catalog price' });
@@ -262,9 +264,9 @@ describe('paid calls against test sellers', () => {
   });
 
   it('payee_mismatch: the 402 pays someone other than the catalog payTo', async () => {
-    env = await startCustomEnv([{ service: demoService('quote'), accepts: { payTo: 'sel_other' }, handler: (_req, res) => void res.json({}) }]);
+    env = await startCustomEnv([{ service: demoService('hotel_search'), accepts: { payTo: 'sel_other' }, handler: (_req, res) => void res.json({}) }]);
     const session = await sessionFor(env);
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ code: 'payee_mismatch' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ code: 'payee_mismatch' });
     expect(session.events).toEqual([
       expect.objectContaining({ type: 'refused', by: 'agent', note: 'The payment recipient does not match the catalog' }),
     ]);
@@ -273,7 +275,7 @@ describe('paid calls against test sellers', () => {
   it('dynamic pricing: a route that settles 3 of 5 cents commits 3', async () => {
     env = await startCustomEnv([
       {
-        service: demoService('summarize'),
+        service: demoService('review_summary'),
         handler: (_req, res) => {
           setSettlementOverrides(res, { amount: '3' });
           res.json({ summary: 'short' });
@@ -281,16 +283,16 @@ describe('paid calls against test sellers', () => {
       },
     ]);
     const session = await sessionFor(env);
-    expect(await session.call('summarize', { url: 'http://x/news/a' }, 'News')).toMatchObject({ ok: true, paidCents: 3 });
+    expect(await session.call('review_summary', HOTEL, 'Reviews')).toMatchObject({ ok: true, paidCents: 3 });
     expect(session.events).toContainEqual(expect.objectContaining({ type: 'decided', priceCents: 5 }));
     expect(session.events.at(-1)).toMatchObject({ type: 'paid', amountCents: 3, spentCents: 3, remainingCents: 97 });
     expect(env.ledger.all()[0]).toMatchObject({ amount: 3, maxAmount: 5 });
   });
 
   it('a body over 64 KB is replaced by response_too_large, and the call stays paid', async () => {
-    env = await startCustomEnv([{ service: demoService('quote'), handler: (_req, res) => void res.json({ blob: 'x'.repeat(70 * 1024) }) }]);
+    env = await startCustomEnv([{ service: demoService('hotel_search'), handler: (_req, res) => void res.json({ blob: 'x'.repeat(70 * 1024) }) }]);
     const session = await sessionFor(env);
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: true, paidCents: 2, data: { error: 'response_too_large' } });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: true, paidCents: 2, data: { error: 'response_too_large' } });
     expect(env.ledger.size).toBe(1);
   });
 });
@@ -305,7 +307,7 @@ describe('the paid-request 402 table (design spec §4.3 step 6)', () => {
       }),
     });
     const session = await sessionFor(env);
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ code: 'cap_exceeded' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ code: 'cap_exceeded' });
     expect(session.events.at(-1)).toMatchObject({ type: 'refused', by: 'facilitator' });
     expect(session.budget()).toMatchObject({ reservedCents: 0, uncertainCents: 0, remainingCents: 100 });
     expect(env.ledger.size).toBe(0);
@@ -325,7 +327,7 @@ describe('the paid-request 402 table (design spec §4.3 step 6)', () => {
       return res;
     });
     const session = await sessionFor(env, { fetch: spy.fetch });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ message: 'The payment outcome is unknown' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ message: 'The payment outcome is unknown' });
     expect(paidResponse?.status).toBe(402);
     const settled = decodePaymentResponseHeader(paidResponse?.headers.get('PAYMENT-RESPONSE') ?? '');
     expect(settled.success).toBe(false);
@@ -340,7 +342,7 @@ describe('the paid-request 402 table (design spec §4.3 step 6)', () => {
       wrap: wrapper({ verify: async () => ({ isValid: false, invalidReason: ErrorCode.expired, invalidMessage: 'late' }) }),
     });
     const session = await sessionFor(env);
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ code: 'payment_rejected' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ code: 'payment_rejected' });
     expect(session.events.at(-1)).toMatchObject({ type: 'refused', by: 'facilitator', note: 'The payment was rejected', detail: ErrorCode.expired });
     expect(session.blocked).toBe(false);
     expect(session.budget().remainingCents).toBe(100);
@@ -355,7 +357,7 @@ describe('the paid-request 402 table (design spec §4.3 step 6)', () => {
       }),
     });
     const session = await sessionFor(env);
-    const outcome = await session.call('quote', { symbol: 'KC' }, 'Price');
+    const outcome = await session.call('hotel_search', S, 'Price');
     expect(outcome).toMatchObject({ ok: false, error: 'failed' });
     expect(session.events.at(-1)).toMatchObject({ type: 'failed', charged: 'no' });
     expect(session.budget()).toMatchObject({ reservedCents: 0, uncertainCents: 0, remainingCents: 100 });
@@ -374,7 +376,7 @@ describe('the paid-request 402 table (design spec §4.3 step 6)', () => {
         : res,
     );
     const session = await sessionFor(env, { fetch: spy.fetch });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ message: 'The payment outcome is unknown' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ message: 'The payment outcome is unknown' });
     expect(session.events.at(-1)).toMatchObject({ type: 'failed', charged: 'unknown' });
     expect(session.budget().uncertainCents).toBe(2);
   });
@@ -393,7 +395,7 @@ describe('the paid-request 402 table (design spec §4.3 step 6)', () => {
       return res;
     });
     const session = await sessionFor(env, { fetch: spy.fetch });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ message: 'The payment outcome is unknown' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ message: 'The payment outcome is unknown' });
     expect(status).toBe(502);
     expect(session.events.at(-1)).toMatchObject({ type: 'failed', charged: 'unknown' });
     expect(session.budget().uncertainCents).toBe(2);
@@ -404,7 +406,7 @@ describe('the paid request payTo', () => {
   it('pays the catalog payTo', async () => {
     env = await startDemoEnv();
     const session = await sessionFor(env);
-    await session.call('quote', { symbol: 'KC' }, 'Price');
+    await session.call('hotel_search', S, 'Price');
     expect(env.ledger.all()[0]?.payTo).toBe(DEMO_PAY_TO);
   });
 });

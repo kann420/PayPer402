@@ -10,7 +10,9 @@ afterEach(async () => {
   env = undefined;
 });
 
-const TASK = 'Brief me on coffee';
+const TASK = 'Find me a quiet hotel in Kyoto near Gion';
+const STAY = { checkIn: '2027-03-30', checkOut: '2027-04-02' };
+const RATES = { hotelId: 'higashiyama-stone-garden-inn', ...STAY };
 
 async function run(script: (e: Env) => ScriptedReply[], options: { maxIterations?: number; maxPerCallCents?: number } = {}) {
   env = await startDemoEnv();
@@ -32,8 +34,10 @@ async function run(script: (e: Env) => ScriptedReply[], options: { maxIterations
   return { result, fake, spy, session, env };
 }
 
-const quoteCall = (id?: string) => toolUse('call_service', { service_id: 'quote', params: { symbol: 'KC' }, reason: 'Need the price' }, id);
-const finishCall = () => toolUse('finish', { answer: 'Coffee is up (simulated data).', spend_explanation: 'I paid for a quote and a summary.' });
+const ratesCall = (id?: string) => toolUse('call_service', { service_id: 'hotel_rates', params: RATES, reason: 'Need the rate' }, id);
+const walkCall = () =>
+  toolUse('call_service', { service_id: 'walking_time', params: { hotelId: RATES.hotelId, place: 'kiyomizu-dera' }, reason: 'Distance' });
+const finishCall = () => toolUse('finish', { answer: 'The Stone Garden Inn fits (simulated data).', spend_explanation: 'I paid for rates and a walking time.' });
 const types = (events: readonly AgentEvent[]) => events.map((e) => e.type);
 
 type ToolResultBlock = { type: string; tool_use_id: string; content: unknown; is_error?: boolean };
@@ -68,7 +72,7 @@ describe('runAgent', () => {
         ['finish', true],
       ]);
       const callSchema = tools[1]?.input_schema as { properties: { service_id: { enum: string[] } } };
-      expect(callSchema.properties.service_id.enum).toEqual(['quote', 'summarize', 'translate', 'premium_news']);
+      expect(callSchema.properties.service_id.enum).toEqual(['hotel_search', 'hotel_rates', 'review_summary', 'walking_time', 'price_forecast']);
     }
     const messages = fake.requests[0]?.body['messages'] as { role: string; content: string }[];
     expect(messages).toEqual([{ role: 'user', content: `Task: ${TASK}\n\nBudget for this run: $1.00. Per-call limit: $0.10.` }]);
@@ -100,10 +104,10 @@ describe('runAgent', () => {
   });
 
   it('keeps the history append-only', async () => {
-    const { fake } = await run((e) => [
+    const { fake } = await run(() => [
       message([thinking('Look first'), toolUse('list_services', {})]),
-      message([quoteCall()]),
-      message([toolUse('call_service', { service_id: 'summarize', params: { url: `${e.url}/news/coffee-port-congestion-eases` }, reason: 'News' })]),
+      message([ratesCall()]),
+      message([walkCall()]),
       message([finishCall()]),
     ]);
     for (let i = 1; i < fake.requests.length; i += 1) {
@@ -114,17 +118,15 @@ describe('runAgent', () => {
     }
   });
 
-  it('script list, quote, summarize, finish alone: events, completed, report, no request after finish', async () => {
-    const { result, fake } = await run((e) => [
+  it('script list, rates, walking time, finish alone: events, completed, report, no request after finish', async () => {
+    const { result, fake } = await run(() => [
       message([thinking('I will check the catalog.'), toolUse('list_services', {})]),
-      message([thinking(''), thinking('A quote is cheap.'), text('Getting the price.'), quoteCall()]),
-      message([
-        toolUse('call_service', { service_id: 'summarize', params: { url: `${e.url}/news/coffee-port-congestion-eases` }, reason: 'Top news' }),
-      ]),
+      message([thinking(''), thinking('Rates are cheap.'), text('Getting the rate.'), ratesCall()]),
+      message([walkCall()]),
       message([finishCall()]),
     ]);
     expect(result.status).toBe('completed');
-    expect(result.answer).toBe('Coffee is up (simulated data).');
+    expect(result.answer).toBe('The Stone Garden Inn fits (simulated data).');
     expect(types(result.events)).toEqual([
       'started',
       'thinking',
@@ -140,60 +142,60 @@ describe('runAgent', () => {
     ]);
     expect(result.events.filter((e) => e.type === 'thinking').map((e) => (e.type === 'thinking' ? e.note : ''))).toEqual([
       'I will check the catalog.',
-      'A quote is cheap.',
-      'Getting the price.',
+      'Rates are cheap.',
+      'Getting the rate.',
     ]);
     expect(result.events[0]).toMatchObject({ type: 'started', sellerName: 'Acme Data', budgetCents: 100, maxPerCallCents: 10, task: TASK });
-    expect(result.report.lines.map((l) => l.serviceId)).toEqual(['quote', 'summarize']);
-    expect(result.report.notUsed.map((s) => s.serviceId)).toEqual(['translate', 'premium_news']);
-    expect(result.report.explanation).toBe('I paid for a quote and a summary.');
+    expect(result.report.lines.map((l) => l.serviceId)).toEqual(['hotel_rates', 'walking_time']);
+    expect(result.report.notUsed.map((s) => s.serviceId)).toEqual(['hotel_search', 'review_summary', 'price_forecast']);
+    expect(result.report.explanation).toBe('I paid for rates and a walking time.');
     expect(result.events.at(-1)).toMatchObject({ type: 'result', status: 'completed', report: result.report });
     expect(fake.requests).toHaveLength(4);
     const listResult = toolResults(fake.requests[1]?.body ?? {})[0];
     expect(JSON.parse(String(listResult?.content))).toMatchObject({
       seller: { name: 'Acme Data' },
-      services: expect.arrayContaining([expect.objectContaining({ id: 'premium_news', price: '$0.25', withinLimits: false })]),
+      services: expect.arrayContaining([expect.objectContaining({ id: 'price_forecast', price: '$0.25', withinLimits: false })]),
     });
   });
 
   it('finish together with another tool use: the other tool runs, and the run stops when the next message arrives', async () => {
-    const { result, fake, env: e } = await run(() => [message([quoteCall(), finishCall()]), message([text('ignored')], 'end_turn')]);
+    const { result, fake, env: e } = await run(() => [message([ratesCall(), finishCall()]), message([text('ignored')], 'end_turn')]);
     expect(result.status).toBe('completed');
-    expect(result.answer).toBe('Coffee is up (simulated data).');
+    expect(result.answer).toBe('The Stone Garden Inn fits (simulated data).');
     expect(e.ledger.size).toBe(1);
     expect(fake.requests).toHaveLength(2);
     expect(toolResults(fake.requests[1]?.body ?? {}).map((r) => r.content)).toContain('Recorded.');
     expect(result.events.filter((ev) => ev.type === 'thinking')).toHaveLength(0);
   });
 
-  it('finish together with quote, then a 529 on the next request: completed with the recorded finish', async () => {
+  it('finish together with rates, then a 529 on the next request: completed with the recorded finish', async () => {
     const { result, fake, env: e } = await run(() => [
-      message([quoteCall(), finishCall()]),
+      message([ratesCall(), finishCall()]),
       { status: 529, error: { type: 'overloaded_error', message: 'Overloaded' } },
     ]);
     expect(fake.requests).toHaveLength(2);
     expect(result.status).toBe('completed');
-    expect(result.answer).toBe('Coffee is up (simulated data).');
-    expect(result.report.explanation).toBe('I paid for a quote and a summary.');
-    expect(result.report.lines).toEqual([expect.objectContaining({ serviceId: 'quote', calls: 1 })]);
+    expect(result.answer).toBe('The Stone Garden Inn fits (simulated data).');
+    expect(result.report.explanation).toBe('I paid for rates and a walking time.');
+    expect(result.report.lines).toEqual([expect.objectContaining({ serviceId: 'hotel_rates', calls: 1 })]);
     expect(e.ledger.size).toBe(1);
     expect(result.events.some((ev) => ev.type === 'failed')).toBe(false);
     expect(result.events.at(-1)).toMatchObject({ type: 'result', status: 'completed' });
   });
 
-  it('an invalid finish together with quote, then a 529: error, because nothing was recorded', async () => {
+  it('an invalid finish together with rates, then a 529: error, because nothing was recorded', async () => {
     const { result } = await run(() => [
-      message([text('Paying for a quote.'), quoteCall(), toolUse('finish', { answer: '', spend_explanation: 'x' })]),
+      message([text('Paying for a rate.'), ratesCall(), toolUse('finish', { answer: '', spend_explanation: 'x' })]),
       { status: 529, error: { type: 'overloaded_error', message: 'Overloaded' } },
     ]);
     expect(result.status).toBe('error');
-    expect(result.answer).toBe('Paying for a quote.');
+    expect(result.answer).toBe('Paying for a rate.');
     expect(result.events).toContainEqual(expect.objectContaining({ type: 'failed', note: 'The model request failed (HTTP 529)' }));
   });
 
-  it('a premium_news call over the per-call limit is refused locally with no HTTP request', async () => {
+  it('a price_forecast call over the per-call limit is refused locally with no HTTP request', async () => {
     const { result, fake, spy } = await run(() => [
-      message([toolUse('call_service', { service_id: 'premium_news', params: { topic: 'coffee' }, reason: 'Full coverage' })]),
+      message([toolUse('call_service', { service_id: 'price_forecast', params: { city: 'kyoto', ...STAY }, reason: 'Full coverage' })]),
       message([finishCall()]),
     ]);
     expect(result.events).toContainEqual(expect.objectContaining({ type: 'refused', code: 'over_per_call_limit', by: 'agent' }));
@@ -204,7 +206,7 @@ describe('runAgent', () => {
   });
 
   it('stop_reason refusal: status refused, and no tools of that message run', async () => {
-    const { result, spy, fake } = await run(() => [message([quoteCall()], 'refusal')]);
+    const { result, spy, fake } = await run(() => [message([ratesCall()], 'refusal')]);
     expect(result.status).toBe('refused');
     expect(result.answer).toBe('The model declined this task.');
     expect(spy.calls).toHaveLength(0);
@@ -212,15 +214,15 @@ describe('runAgent', () => {
   });
 
   it('end_turn without finish: completed, with the text as the answer and an empty explanation', async () => {
-    const { result } = await run(() => [message([thinking('Done.'), text('Here is the brief.')], 'end_turn')]);
+    const { result } = await run(() => [message([thinking('Done.'), text('Here is the pick.')], 'end_turn')]);
     expect(result.status).toBe('completed');
-    expect(result.answer).toBe('Here is the brief.');
+    expect(result.answer).toBe('Here is the pick.');
     expect(result.report.explanation).toBe('');
     expect(result.events.filter((e) => e.type === 'thinking').map((e) => (e.type === 'thinking' ? e.note : ''))).toEqual(['Done.']);
   });
 
   it('max_tokens: incomplete, and the tools of that message do not run', async () => {
-    const { result, spy } = await run(() => [message([text('Partial'), quoteCall()], 'max_tokens')]);
+    const { result, spy } = await run(() => [message([text('Partial'), ratesCall()], 'max_tokens')]);
     expect(result.status).toBe('incomplete');
     expect(result.answer).toBe('Partial');
     expect(spy.calls).toHaveLength(0);
@@ -228,7 +230,7 @@ describe('runAgent', () => {
 
   it('the iteration limit: the third message tools never run, and exactly 3 requests are made', async () => {
     const { result, spy, fake } = await run(
-      () => [message([text('Listing.'), toolUse('list_services', {})]), message([toolUse('get_budget', {})]), message([quoteCall()])],
+      () => [message([text('Listing.'), toolUse('list_services', {})]), message([toolUse('get_budget', {})]), message([ratesCall()])],
       { maxIterations: 3 },
     );
     expect(result.status).toBe('incomplete');
@@ -239,13 +241,13 @@ describe('runAgent', () => {
     for (const request of fake.requests) expect(request.body).not.toHaveProperty('max_iterations');
   });
 
-  it('the iteration limit with finish: completed with the finish answer, and no quote request', async () => {
+  it('the iteration limit with finish: completed with the finish answer, and no rates request', async () => {
     const { result, spy, fake } = await run(
-      () => [message([toolUse('list_services', {})]), message([toolUse('get_budget', {})]), message([quoteCall(), finishCall()])],
+      () => [message([toolUse('list_services', {})]), message([toolUse('get_budget', {})]), message([ratesCall(), finishCall()])],
       { maxIterations: 3 },
     );
     expect(result.status).toBe('completed');
-    expect(result.answer).toBe('Coffee is up (simulated data).');
+    expect(result.answer).toBe('The Stone Garden Inn fits (simulated data).');
     expect(spy.calls).toHaveLength(0);
     expect(fake.requests).toHaveLength(3);
   });
@@ -269,14 +271,14 @@ describe('runAgent', () => {
   });
 
   it('paid calls made before an API error stay in the report', async () => {
-    const { result } = await run(() => [message([quoteCall()]), { status: 500, error: { type: 'api_error', message: 'boom' } }]);
+    const { result } = await run(() => [message([ratesCall()]), { status: 500, error: { type: 'api_error', message: 'boom' } }]);
     expect(result.status).toBe('error');
-    expect(result.report.lines).toEqual([expect.objectContaining({ serviceId: 'quote', calls: 1 })]);
+    expect(result.report.lines).toEqual([expect.objectContaining({ serviceId: 'hotel_rates', calls: 1 })]);
   });
 
   it('invalid call_service input (an unknown param) is a tool error, and the run continues', async () => {
     const { result, fake } = await run(() => [
-      message([toolUse('call_service', { service_id: 'quote', params: { symbol: 'KC', extra: 'x' }, reason: 'Price' })]),
+      message([toolUse('call_service', { service_id: 'hotel_rates', params: { ...RATES, extra: 'x' }, reason: 'Price' })]),
       message([finishCall()]),
     ]);
     const [error] = toolResults(fake.requests[1]?.body ?? {});

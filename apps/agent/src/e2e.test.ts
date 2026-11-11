@@ -42,25 +42,25 @@ describe('end to end: facilitator + demo seller + agent', () => {
       nowSeconds: () => h.clock.now,
       ...(fetchFn === undefined ? {} : { fetch: fetchFn }),
     });
+  const RATES = { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' };
   const call = (serviceId: string, params: Record<string, unknown>, reason: string) =>
     toolUse('call_service', { service_id: serviceId, params, reason });
   const finish = (answer: string) => toolUse('finish', { answer, spend_explanation: 'I explained what I paid for.' });
 
   it('paid calls land in the ledger, a settlement charges exactly the sum, and revocation is refused once', async () => {
-    const articleUrl = `${seller.url}/news/coffee-highland-rains-delay-harvest`;
     const fake = fakeAnthropic([
       message([toolUse('list_services', {})]),
-      message([call('quote', { symbol: 'KC' }, 'Current coffee price')]),
-      message([call('summarize', { url: articleUrl }, 'Top news without premium coverage')]),
-      message([call('translate', { text: 'Coffee prices held firm.', targetLanguage: 'Vietnamese' }, 'The user asked for Vietnamese')]),
-      message([finish('Giá cà phê ổn định (dữ liệu mô phỏng).')]),
+      message([call('hotel_rates', RATES, 'Rates for the stay')]),
+      message([call('review_summary', { hotelId: RATES.hotelId, focus: 'noise at night' }, 'Is it quiet?')]),
+      message([call('walking_time', { hotelId: RATES.hotelId, place: 'kiyomizu-dera' }, 'Walking distance')]),
+      message([finish('The Stone Garden Inn fits (simulated data).')]),
     ]);
-    const run = await runAgent({ task: 'Brief me on coffee in Vietnamese', session: await session(), anthropic: fake.client });
+    const run = await runAgent({ task: 'Find me a quiet hotel in Kyoto', session: await session(), anthropic: fake.client });
     expect(run.status).toBe('completed');
     expect(run.report.lines.map((l) => [l.serviceId, l.totalCents])).toEqual([
-      ['quote', 2],
-      ['summarize', 5],
-      ['translate', 1],
+      ['hotel_rates', 1],
+      ['review_summary', 5],
+      ['walking_time', 1],
     ]);
 
     const listed = await h.api('GET', `/v1/commitments?agentId=${agentId}&limit=500`, { key: operatorKey });
@@ -73,8 +73,8 @@ describe('end to end: facilitator + demo seller + agent', () => {
 
     const settled = await h.api('POST', '/v1/settlements', { key: operatorKey });
     expect(settled.status).toBe(201);
-    expect(settled.body['settlement']).toMatchObject({ status: 'completed', amount: 8, callsCount: 3 });
-    expect(h.paypal.callsOf('chargeVaultedWallet')).toEqual([[expect.objectContaining({ amountCents: 8 })]]);
+    expect(settled.body['settlement']).toMatchObject({ status: 'completed', amount: 7, callsCount: 3 });
+    expect(h.paypal.callsOf('chargeVaultedWallet')).toEqual([[expect.objectContaining({ amountCents: 7 })]]);
     h.checkInvariants();
 
     // The payer stops the agreement at PayPal; the webhook revokes the wallet.
@@ -87,11 +87,11 @@ describe('end to end: facilitator + demo seller + agent', () => {
 
     const spy = fetchSpy();
     const second = fakeAnthropic([
-      message([call('quote', { symbol: 'KC' }, 'Current coffee price')]),
-      message([call('quote', { symbol: 'CC' }, 'Cocoa too')]),
+      message([call('hotel_rates', RATES, 'Rates for the stay')]),
+      message([call('hotel_rates', { ...RATES, hotelId: 'gion-lantern-house' }, 'Another hotel')]),
       message([finish('Payments were refused: the operator stopped the PayPal link.')]),
     ]);
-    const stopped = await runAgent({ task: 'Brief me on coffee', session: await session(spy.fetch), anthropic: second.client });
+    const stopped = await runAgent({ task: 'Find me a quiet hotel in Kyoto', session: await session(spy.fetch), anthropic: second.client });
     const refused = stopped.events.filter((e) => e.type === 'refused');
     expect(refused).toEqual([expect.objectContaining({ code: 'wallet_revoked', by: 'facilitator' })]);
     expect(spy.calls).toHaveLength(2);

@@ -12,7 +12,7 @@ afterEach(async () => {
   env = undefined;
 });
 
-const TASK = "Brief me on today's coffee market: current price, top news, and a summary in Vietnamese.";
+const TASK = 'Find me a quiet hotel in Kyoto near Gion for cherry blossom season, March 30 to April 2, 2027.';
 
 const ENFORCE: SpendPolicy = { notNeededBelow: 0.4, coveredAbove: 0.6, modes: { not_needed: 'enforce', already_covered: 'enforce' } };
 const OBSERVE: SpendPolicy = { ...ENFORCE, modes: { not_needed: 'observe', already_covered: 'observe' } };
@@ -55,7 +55,9 @@ function sessionFor(e: Env, checker: SpendCheck | undefined, options: Partial<Op
 }
 
 const types = (events: readonly AgentEvent[]) => events.map((e) => e.type);
-const articleUrl = (e: Env) => `${e.url}/news/coffee-highland-rains-delay-harvest`;
+const S = { city: 'kyoto', checkIn: '2027-03-30', checkOut: '2027-04-02' };
+const GION = { ...S, area: 'gion' };
+const HOTEL = { hotelId: 'gion-lantern-house' };
 
 /** A custom paid route with one free-form param, answering the params back. */
 function echoService(id: string, param: string, type: 'string' | 'integer' = 'string', priceCents = 1): ServiceDef {
@@ -85,12 +87,12 @@ describe('decision layer off', () => {
         if (event.type === 'decided') reservedAtDecided = observed.budget().reservedCents;
       },
     });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: true });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price again')).toMatchObject({ ok: true });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: true });
+    expect(await session.call('hotel_search', S, 'Price again')).toMatchObject({ ok: true });
     expect(types(session.events)).toEqual(['discovered_price', 'decided', 'paid', 'discovered_price', 'decided', 'paid']);
     for (const event of session.events) expect(event).not.toHaveProperty('check');
     expect(session.report()).not.toHaveProperty('decisionLayer');
-    await observed.call('quote', { symbol: 'KC' }, 'Price');
+    await observed.call('hotel_search', S, 'Price');
     // decided is emitted right after the reservation, as in Phase 3.
     expect(reservedAtDecided).toBe(2);
   });
@@ -101,7 +103,7 @@ describe('decision layer on', () => {
     env = await startDemoEnv();
     const checker = always(PASS);
     const session = await sessionFor(env, checker);
-    expect(await session.call('quote', { symbol: 'KC' }, 'SECRET-REASON need the price')).toMatchObject({ ok: true, paidCents: 2 });
+    expect(await session.call('hotel_search', S, 'SECRET-REASON need the price')).toMatchObject({ ok: true, paidCents: 2 });
     expect(types(session.events)).toEqual(['discovered_price', 'decided', 'paid']);
     expect(session.events[1]).toMatchObject({
       type: 'decided',
@@ -111,24 +113,24 @@ describe('decision layer on', () => {
     expect(checker.inputs).toEqual([
       {
         task: TASK,
-        call: { serviceName: 'Market Quote API', serviceDescription: demoService('quote').description, params: { symbol: 'KC' } },
+        call: { serviceName: 'Hotel Search API', serviceDescription: demoService('hotel_search').description, params: S },
         earlier: [],
       },
     ]);
     expect(JSON.stringify(checker.inputs)).not.toContain('SECRET-REASON');
   });
 
-  it('passes earlier results: the quote excerpt, at most 600 characters', async () => {
+  it('passes earlier results: the search excerpt, at most 600 characters', async () => {
     env = await startDemoEnv();
     const checker = always(PASS);
     const session = await sessionFor(env, checker);
-    const quote = await session.call('quote', { symbol: 'KC' }, 'Price');
-    await session.call('summarize', { url: articleUrl(env) }, 'News');
+    const search = await session.call('hotel_search', S, 'Price');
+    await session.call('review_summary', HOTEL, 'Reviews');
     const earlier = checker.inputs[1]?.earlier ?? [];
     expect(earlier).toHaveLength(1);
-    expect(earlier[0]).toMatchObject({ serviceName: 'Market Quote API', params: { symbol: 'KC' } });
+    expect(earlier[0]).toMatchObject({ serviceName: 'Hotel Search API', params: S });
     expect(earlier[0]?.resultExcerpt.length).toBeLessThanOrEqual(600);
-    expect(earlier[0]?.resultExcerpt).toBe(JSON.stringify(quote.ok && quote.data).slice(0, 600));
+    expect(earlier[0]?.resultExcerpt).toBe(JSON.stringify(search.ok && search.data).slice(0, 600));
   });
 
   it('keeps the last 8 paid results as earlier results', async () => {
@@ -153,7 +155,7 @@ describe('decision layer on', () => {
     const session = await sessionFor(env, checker, { fetch: spy.fetch });
     const tools = createToolCore(session);
     const callService = tools.find((t) => t.name === 'call_service');
-    const output = await callService?.run({ service_id: 'quote', params: { symbol: 'CC' }, reason: 'Cocoa' });
+    const output = await callService?.run({ service_id: 'hotel_search', params: GION, reason: 'Gion hotels' });
     expect(output?.isError).toBe(true);
     const body = JSON.parse(output?.text ?? '{}') as Record<string, unknown>;
     expect(body).toMatchObject({ ok: false, error: 'refused', code, check: scores });
@@ -171,25 +173,25 @@ describe('decision layer on', () => {
     expect(session.blocked).toBe(false);
     // A later, different call proceeds.
     next = PASS;
-    expect(await session.call('quote', { symbol: 'KC' }, 'Coffee')).toMatchObject({ ok: true });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: true });
     expect(env.ledger.size).toBe(1);
   });
 
   it('observe mode: decided with flagged and wouldRefuse, then paid', async () => {
     env = await startDemoEnv();
     const session = await sessionFor(env, always(NOT_NEEDED), {}, OBSERVE);
-    expect(await session.call('quote', { symbol: 'CC' }, 'Cocoa')).toMatchObject({ ok: true });
+    expect(await session.call('hotel_search', GION, 'Gion hotels')).toMatchObject({ ok: true });
     expect(types(session.events)).toEqual(['discovered_price', 'decided', 'paid']);
     expect(session.events[1]).toMatchObject({ check: { status: 'flagged', wouldRefuse: 'not_needed', servesTask: 0.12 } });
     const covered = await sessionFor(env, always(COVERED), {}, OBSERVE);
-    await covered.call('quote', { symbol: 'KC' }, 'Coffee');
+    await covered.call('hotel_search', S, 'Price');
     expect(covered.events[1]).toMatchObject({ check: { status: 'flagged', wouldRefuse: 'already_covered', alreadyCovered: 0.91 } });
   });
 
   it('mixed policy: with both rules matching, an observed not_needed and an enforced already_covered block as already_covered', async () => {
     env = await startDemoEnv();
     const session = await sessionFor(env, always({ model: 'jev-1.14.0', servesTask: 0.1, alreadyCovered: 0.9 }), {}, MIXED);
-    expect(await session.call('quote', { symbol: 'KC' }, 'Coffee')).toMatchObject({ ok: false, code: 'already_covered' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: false, code: 'already_covered' });
   });
 
   it('repeat: an exact retry of a blocked call gets the same refusal without asking Jev or reserving', async () => {
@@ -201,9 +203,9 @@ describe('decision layer on', () => {
         reserved.push(session.budget().reservedCents);
       },
     });
-    await session.call('quote', { symbol: 'CC' }, 'Cocoa');
+    await session.call('hotel_search', GION, 'Gion hotels');
     reserved.length = 0;
-    const repeat = await session.call('quote', { symbol: 'CC' }, 'Cocoa, really');
+    const repeat = await session.call('hotel_search', GION, 'Gion hotels, really');
     expect(repeat).toMatchObject({ ok: false, error: 'refused', code: 'not_needed', check: { servesTask: 0.12, alreadyCovered: 0.05 } });
     expect(checker.calls).toBe(1);
     expect(reserved.every((cents) => cents === 0)).toBe(true);
@@ -211,7 +213,7 @@ describe('decision layer on', () => {
     expect(second).toMatchObject({ code: 'not_needed', by: 'agent', note: (first as { note: string }).note, detail: 'Same as call_1' });
     expect((second as { check: unknown }).check).toEqual({ ...(first as { check: object }).check, repeatOf: 'call_1' });
     // Changed params are judged anew.
-    await session.call('quote', { symbol: 'SB' }, 'Sugar');
+    await session.call('hotel_search', { ...S, area: 'higashiyama' }, 'Higashiyama hotels');
     expect(checker.calls).toBe(2);
   });
 
@@ -219,8 +221,8 @@ describe('decision layer on', () => {
     env = await startDemoEnv();
     const checker = always(PASS);
     const session = await sessionFor(env, checker);
-    await session.call('quote', { symbol: 'KC' }, 'Price');
-    const outcome = await session.call('quote', { symbol: 'KC' }, 'Price again');
+    await session.call('hotel_search', S, 'Price');
+    const outcome = await session.call('hotel_search', S, 'Price again');
     expect(outcome).toMatchObject({ ok: false, error: 'refused', code: 'duplicate_call', message: 'This exact call was already made in this run' });
     expect(outcome).not.toHaveProperty('check');
     expect(checker.calls).toBe(1);
@@ -246,9 +248,9 @@ describe('decision layer on', () => {
       return PASS;
     });
     const session = await sessionFor(env, checker);
-    const first = session.call('quote', { symbol: 'KC' }, 'Price');
+    const first = session.call('hotel_search', S, 'Price');
     await enteredPromise;
-    const second = await session.call('quote', { symbol: 'KC' }, 'Price, in parallel');
+    const second = await session.call('hotel_search', S, 'Price, in parallel');
     expect(second).toMatchObject({ ok: false, code: 'duplicate_call' });
     expect(session.events.find((e) => e.type === 'refused')).toMatchObject({ callId: 'call_2', detail: 'Same as call_1 (in progress)' });
     release();
@@ -263,9 +265,9 @@ describe('decision layer on', () => {
       return res;
     });
     const session = await sessionFor(env, always(PASS), { fetch: spy.fetch });
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: false, error: 'failed' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: false, error: 'failed' });
     expect(session.budget().uncertainCents).toBe(2);
-    expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ code: 'duplicate_call' });
+    expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ code: 'duplicate_call' });
     expect(session.events.at(-1)).toMatchObject({ detail: 'Same as call_1 (outcome unknown)' });
   });
 
@@ -295,7 +297,7 @@ describe('decision layer on', () => {
     ])('%s: decided with unavailable, then paid', async (_label, answer, note, deadlineMs) => {
       env = await startDemoEnv();
       const session = await sessionFor(env, fakeSpendCheck(answer as () => Promise<SpendCheckResult>), {}, ENFORCE, deadlineMs);
-      expect(await session.call('quote', { symbol: 'KC' }, 'Price')).toMatchObject({ ok: true });
+      expect(await session.call('hotel_search', S, 'Price')).toMatchObject({ ok: true });
       expect(types(session.events)).toEqual(['discovered_price', 'decided', 'paid']);
       expect(session.events[1]).toMatchObject({ check: { status: 'unavailable', note, latencyMs: expect.any(Number) } });
       expect(Object.keys((session.events[1] as { check: object }).check).sort()).toEqual(['latencyMs', 'note', 'status']);
@@ -333,14 +335,14 @@ describe('decision layer on', () => {
       return next;
     });
     const session = await sessionFor(env, checker, {}, MIXED);
-    await session.call('quote', { symbol: 'KC' }, 'Price'); // passed
-    await session.call('quote', { symbol: 'CC' }, 'Cocoa'); // flagged (not_needed observes)
-    await session.call('quote', { symbol: 'SB' }, 'Sugar'); // flagged
-    await session.call('quote', { symbol: 'CT' }, 'Cotton'); // unavailable
-    await session.call('quote', { symbol: 'KC' }, 'Price again'); // duplicate_call, not counted
+    await session.call('hotel_search', S, 'Price'); // passed
+    await session.call('hotel_search', GION, 'Gion hotels'); // flagged (not_needed observes)
+    await session.call('hotel_search', { ...S, area: 'higashiyama' }, 'Higashiyama hotels'); // flagged
+    await session.call('hotel_search', { ...S, area: 'kawaramachi' }, 'Kawaramachi hotels'); // unavailable
+    await session.call('hotel_search', S, 'Price again'); // duplicate_call, not counted
     const blocking = await sessionFor(env, always(COVERED), {}, MIXED);
-    await blocking.call('quote', { symbol: 'KC' }, 'Price'); // blocked
-    await blocking.call('quote', { symbol: 'KC' }, 'Price'); // blocked repeat
+    await blocking.call('hotel_search', S, 'Price'); // blocked
+    await blocking.call('hotel_search', S, 'Price'); // blocked repeat
     const report = session.report('Why');
     expect(report.decisionLayer).toEqual({
       model: 'jev-test',
@@ -350,7 +352,7 @@ describe('decision layer on', () => {
       flagged: 2,
       unavailable: 1,
     });
-    expect(report.refusals).toEqual([{ serviceId: 'quote', code: 'duplicate_call' }]);
+    expect(report.refusals).toEqual([{ serviceId: 'hotel_search', code: 'duplicate_call' }]);
     expect(blocking.report().decisionLayer).toMatchObject({ passed: 0, blocked: 2, flagged: 0, unavailable: 0 });
     for (const event of [...session.events, ...blocking.events]) expect(JSON.parse(JSON.stringify(event))).toEqual(event);
     expect(JSON.parse(JSON.stringify(report))).toEqual(report);

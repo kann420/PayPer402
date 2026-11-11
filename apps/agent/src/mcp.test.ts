@@ -47,7 +47,7 @@ describe('MCP server', () => {
       inputSchema: {
         type: 'object',
         properties: {
-          service_id: { type: 'string', enum: ['quote', 'summarize', 'translate', 'premium_news'] },
+          service_id: { type: 'string', enum: ['hotel_search', 'hotel_rates', 'review_summary', 'walking_time', 'price_forecast'] },
           reason: { type: 'string', minLength: 1, maxLength: 300 },
         },
         required: ['service_id', 'params', 'reason'],
@@ -57,31 +57,31 @@ describe('MCP server', () => {
   });
 
   it('call_service pays, get_budget reflects it, and the budget persists across calls', async () => {
-    const first = await client.callTool({ name: 'call_service', arguments: { service_id: 'quote', params: { symbol: 'KC' }, reason: 'Price' } });
+    const first = await client.callTool({ name: 'call_service', arguments: { service_id: 'hotel_rates', params: { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, reason: 'Price' } });
     expect(first.isError).toBeFalsy();
-    expect(json(first)).toMatchObject({ ok: true, service: 'quote', paidCents: 2, budget: { spentCents: 2, remainingCents: 98 } });
+    expect(json(first)).toMatchObject({ ok: true, service: 'hotel_rates', paidCents: 1, budget: { spentCents: 1, remainingCents: 99 } });
     expect(json(first)['commitmentId']).toBe(env.ledger.all()[0]?.id);
-    await client.callTool({ name: 'call_service', arguments: { service_id: 'translate', params: { text: 'Hi', targetLanguage: 'vi' }, reason: 'Translate' } });
+    await client.callTool({ name: 'call_service', arguments: { service_id: 'review_summary', params: { hotelId: 'higashiyama-stone-garden-inn' }, reason: 'Reviews' } });
     const budget = json(await client.callTool({ name: 'get_budget', arguments: {} }));
-    expect(budget).toEqual({ budgetCents: 100, spentCents: 3, uncertainCents: 0, remainingCents: 97, maxPerCallCents: 10, paidCalls: 2 });
+    expect(budget).toEqual({ budgetCents: 100, spentCents: 6, uncertainCents: 0, remainingCents: 94, maxPerCallCents: 10, paidCalls: 2 });
     const listed = json(await client.callTool({ name: 'list_services', arguments: {} }));
-    expect(listed['budget']).toEqual({ budgetCents: 100, spentCents: 3, remainingCents: 97, maxPerCallCents: 10 });
+    expect(listed['budget']).toEqual({ budgetCents: 100, spentCents: 6, remainingCents: 94, maxPerCallCents: 10 });
   });
 
   it('an over-limit service returns isError with refused', async () => {
-    const result = await client.callTool({ name: 'call_service', arguments: { service_id: 'premium_news', params: { topic: 'coffee' }, reason: 'Full' } });
+    const result = await client.callTool({ name: 'call_service', arguments: { service_id: 'price_forecast', params: { city: 'kyoto', checkIn: '2027-03-30', checkOut: '2027-04-02' }, reason: 'Full' } });
     expect(result.isError).toBe(true);
     expect(json(result)).toMatchObject({ ok: false, error: 'refused', code: 'over_per_call_limit' });
   });
 
   it('invalid params return isError with invalid_params', async () => {
-    const result = await client.callTool({ name: 'call_service', arguments: { service_id: 'quote', params: { ticker: 'KC' }, reason: 'Price' } });
+    const result = await client.callTool({ name: 'call_service', arguments: { service_id: 'hotel_rates', params: { ticker: 'KC' }, reason: 'Price' } });
     expect(result.isError).toBe(true);
     expect(json(result)).toMatchObject({ ok: false, error: 'invalid_params' });
   });
 
   it('logs events through the injected logger and writes nothing to stdout', async () => {
-    await client.callTool({ name: 'call_service', arguments: { service_id: 'quote', params: { symbol: 'KC' }, reason: 'Price' } });
+    await client.callTool({ name: 'call_service', arguments: { service_id: 'hotel_rates', params: { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, reason: 'Price' } });
     await client.callTool({ name: 'get_budget', arguments: {} });
     expect(logged).toEqual([
       expect.stringMatching(/^\[402\] call_1/),

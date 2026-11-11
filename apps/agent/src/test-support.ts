@@ -118,13 +118,9 @@ export const OPERATOR = 'op_test';
 /** A seller AI that answers deterministically, or fails when told to. */
 export class FakeSellerAi implements SellerAi {
   fail = false;
-  async summarize(input: { title: string; maxWords: number }): Promise<string> {
+  async summarizeReviews(input: { hotelName: string; focus?: string }): Promise<string> {
     if (this.fail) throw new Error('model down');
-    return `Summary of ${input.title}.`;
-  }
-  async translate(input: { text: string; targetLanguage: string }): Promise<string> {
-    if (this.fail) throw new Error('model down');
-    return `[${input.targetLanguage}] ${input.text}`;
+    return `Summary of the reviews of ${input.hotelName}${input.focus === undefined ? '' : ` on ${input.focus}`}.`;
   }
 }
 

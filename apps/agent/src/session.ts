@@ -9,7 +9,7 @@ import { CallRegistry } from './registry';
 import { CHECK_DEADLINE_MS, DEFAULT_SPEND_POLICY, resultExcerpt, type SpendCheck, type SpendPolicy } from './spend-check';
 
 export interface OpenSessionOptions {
-  /** The seller's base URL; the catalog, the calls and the newsroom links share its origin. */
+  /** The seller's base URL; the catalog and the calls share its origin. */
   sellerUrl: string;
   /** The agent's Ed25519 private key. */
   privateKey: KeyObject;

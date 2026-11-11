@@ -25,9 +25,9 @@ describe('agent configuration', () => {
   it('parses --budget, --max-per-call and the task, over the environment', () => {
     const config = loadAgentConfig(
       { AGENT_PRIVATE_KEY: raw, AGENT_BUDGET: '5', AGENT_MAX_PER_CALL: '0.50', SELLER_URL: 'http://127.0.0.1:9999/' },
-      ['--budget', '2.50', '--max-per-call', '$0.05', 'What', 'is', 'cocoa', 'doing?'],
+      ['--budget', '2.50', '--max-per-call', '$0.05', 'What', 'is', 'hotels', 'in', 'Kyoto?'],
     );
-    expect(config).toMatchObject({ budgetCents: 250, maxPerCallCents: 5, task: 'What is cocoa doing?', sellerUrl: 'http://127.0.0.1:9999' });
+    expect(config).toMatchObject({ budgetCents: 250, maxPerCallCents: 5, task: 'What is hotels in Kyoto?', sellerUrl: 'http://127.0.0.1:9999' });
     expect(loadAgentConfig({ AGENT_PRIVATE_KEY: raw, AGENT_BUDGET: '3.00' })).toMatchObject({ budgetCents: 300 });
   });
 
@@ -87,8 +87,8 @@ describe('runCli', () => {
   it('runs the agent, prints the timeline, the answer and the report, and exits 0', async () => {
     env = await startDemoEnv();
     const fake = fakeAnthropic([
-      message([toolUse('call_service', { service_id: 'quote', params: { symbol: 'KC' }, reason: 'Price' })]),
-      message([toolUse('finish', { answer: 'Coffee is up.', spend_explanation: 'One quote.' })]),
+      message([toolUse('call_service', { service_id: 'hotel_rates', params: { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, reason: 'Price' })]),
+      message([toolUse('finish', { answer: 'The Stone Garden Inn fits.', spend_explanation: 'One rate check.' })]),
     ]);
     const captured = io();
     const code = await runCli(['--budget', '0.50'], { AGENT_PRIVATE_KEY: exportPrivateKeyRaw(env.key.privateKey), SELLER_URL: env.url }, captured.io, {
@@ -97,17 +97,17 @@ describe('runCli', () => {
     expect(code).toBe(0);
     const output = captured.out.join('\n');
     expect(output).toContain('[start] Acme Data: budget $0.50, per-call limit $0.10');
-    expect(output).toContain('[402] call_1 Market Quote API asks $0.02 (catalog $0.02)');
-    expect(output).toContain('[paid] call_1 Market Quote API $0.02');
+    expect(output).toContain('[402] call_1 Room Rates API asks $0.01 (catalog $0.01)');
+    expect(output).toContain('[paid] call_1 Room Rates API $0.01');
     expect(output).toContain('[result] completed');
-    expect(output).toContain('Coffee is up.');
+    expect(output).toContain('The Stone Garden Inn fits.');
     expect(output).toContain('Spend report (Acme Data)');
     expect(output).not.toContain(exportPrivateKeyRaw(env.key.privateKey));
   });
 });
 
 describe('format', () => {
-  const base = { at: 1, callId: 'call_1', serviceId: 'quote', serviceName: 'Market Quote API' };
+  const base = { at: 1, callId: 'call_1', serviceId: 'hotel_rates', serviceName: 'Room Rates API' };
   const report: SpendReport = {
     sellerName: 'Acme Data',
     budgetCents: 100,
@@ -115,28 +115,28 @@ describe('format', () => {
     uncertainCents: 0,
     remainingCents: 93,
     lines: [
-      { serviceId: 'quote', serviceName: 'Market Quote API', calls: 1, unitPriceCents: 2, totalCents: 2 },
-      { serviceId: 'summarize', serviceName: 'Page Summary API', calls: 1, unitPriceCents: 5, totalCents: 5 },
+      { serviceId: 'hotel_rates', serviceName: 'Room Rates API', calls: 1, unitPriceCents: 2, totalCents: 2 },
+      { serviceId: 'review_summary', serviceName: 'Review Summary API', calls: 1, unitPriceCents: 5, totalCents: 5 },
     ],
-    notUsed: [{ serviceId: 'premium_news', serviceName: 'Premium News API', priceCents: 25 }],
-    refusals: [{ serviceId: 'premium_news', code: 'over_per_call_limit' }],
+    notUsed: [{ serviceId: 'price_forecast', serviceName: 'Price Forecast API (premium)', priceCents: 25 }],
+    refusals: [{ serviceId: 'price_forecast', code: 'over_per_call_limit' }],
     commitmentIds: ['cmt_1', 'cmt_2'],
-    explanation: 'Bought a quote\nand a summary.',
+    explanation: 'Bought rates\nand a review summary.',
   };
   const events: [AgentEvent, string][] = [
     [{ type: 'started', at: 1, sellerName: 'Acme Data', budgetCents: 100, maxPerCallCents: 10, task: 'Brief\nme' }, '[start] Acme Data: budget $1.00, per-call limit $0.10. Task: Brief me'],
     [{ type: 'thinking', at: 1, note: 'line one\nline two' }, '[think] line one line two'],
-    [{ type: 'discovered_price', ...base, priceCents: 2, catalogPriceCents: 2 }, '[402] call_1 Market Quote API asks $0.02 (catalog $0.02)'],
-    [{ type: 'decided', ...base, priceCents: 2, note: 'Need it', remainingCents: 98 }, '[decide] call_1 pay $0.02 for Market Quote API: Need it (left after this: $0.98)'],
+    [{ type: 'discovered_price', ...base, priceCents: 2, catalogPriceCents: 2 }, '[402] call_1 Room Rates API asks $0.02 (catalog $0.02)'],
+    [{ type: 'decided', ...base, priceCents: 2, note: 'Need it', remainingCents: 98 }, '[decide] call_1 pay $0.02 for Room Rates API: Need it (left after this: $0.98)'],
     [
       { type: 'paid', ...base, amountCents: 2, commitmentId: 'cmt_1', httpStatus: 200, spentCents: 2, remainingCents: 98 },
-      '[paid] call_1 Market Quote API $0.02, commitment cmt_1; spent $0.02, left $0.98',
+      '[paid] call_1 Room Rates API $0.02, commitment cmt_1; spent $0.02, left $0.98',
     ],
     [
       { type: 'refused', ...base, code: 'wallet_revoked', by: 'facilitator', note: "Payment required: the operator's PayPal link was stopped." },
-      "[refused] call_1 Market Quote API: Payment required: the operator's PayPal link was stopped. (wallet_revoked, by facilitator)",
+      "[refused] call_1 Room Rates API: Payment required: the operator's PayPal link was stopped. (wallet_revoked, by facilitator)",
     ],
-    [{ type: 'failed', ...base, note: 'The payment outcome is unknown', charged: 'unknown' }, '[failed] call_1 Market Quote API: The payment outcome is unknown (charged: unknown)'],
+    [{ type: 'failed', ...base, note: 'The payment outcome is unknown', charged: 'unknown' }, '[failed] call_1 Room Rates API: The payment outcome is unknown (charged: unknown)'],
     [{ type: 'failed', at: 1, note: 'The model request failed (HTTP 529)', charged: 'no' }, '[failed] The model request failed (HTTP 529) (charged: no)'],
     [{ type: 'result', at: 1, status: 'completed', answer: 'x', report }, '[result] completed'],
   ];
@@ -151,15 +151,15 @@ describe('format', () => {
     expect(formatReport(report)).toBe(
       [
         'Spend report (Acme Data)',
-        'Service           Calls   Unit           Total',
-        'Market Quote API      1  $0.02           $0.02',
-        'Page Summary API      1  $0.05           $0.05',
-        'Spent                                    $0.07',
-        'Left of budget                  $0.93 of $1.00',
-        'Not used: Premium News API ($0.25)',
-        'Refused: premium_news (over_per_call_limit)',
+        'Service             Calls   Unit           Total',
+        'Room Rates API          1  $0.02           $0.02',
+        'Review Summary API      1  $0.05           $0.05',
+        'Spent                                      $0.07',
+        'Left of budget                    $0.93 of $1.00',
+        'Not used: Price Forecast API (premium) ($0.25)',
+        'Refused: price_forecast (over_per_call_limit)',
         'Commitments: cmt_1, cmt_2',
-        'Why: Bought a quote and a summary.',
+        'Why: Bought rates and a review summary.',
       ].join('\n'),
     );
   });

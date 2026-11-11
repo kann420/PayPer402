@@ -13,7 +13,7 @@ describe('canonicalKey', () => {
 
   it('distinguishes 1 from "1" and one service from another', () => {
     expect(canonicalKey('s', { n: 1 })).not.toBe(canonicalKey('s', { n: '1' }));
-    expect(canonicalKey('quote', { symbol: 'KC' })).not.toBe(canonicalKey('premium_news', { symbol: 'KC' }));
+    expect(canonicalKey('hotel_rates', { hotelId: 'gion-lantern-house' })).not.toBe(canonicalKey('walking_time', { hotelId: 'gion-lantern-house' }));
   });
 });
 
