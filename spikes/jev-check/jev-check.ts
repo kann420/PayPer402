@@ -23,7 +23,7 @@ import {
   type Fetch,
   type TypeSafeClientConfig,
 } from '@typesafe-ai/sdk';
-import { ARTICLES, DEMO_SOURCE, SERVICES, quoteAt, type ServiceDef } from '@payper402/demo-seller';
+import { ARTICLES, DEMO_SOURCE, SERVICES, quoteAt, type ServiceDef } from '@payper402/agent/eval-fixtures';
 
 // ---------------------------------------------------------------------------------------------
 // Spec constants (decision-layer.md §4 and §5, draft 1)

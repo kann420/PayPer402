@@ -6,7 +6,7 @@
  * fixed publishedAt, newsroom URLs on http://localhost:4021, and seller summaries and translations
  * captured once from the real seller AI (see SELLER_TEXTS).
  */
-import { ARTICLES, DEMO_SOURCE, SERVICES, quoteAt } from '@payper402/demo-seller';
+import { ARTICLES, DEMO_SOURCE, SERVICES, quoteAt } from './eval-fixtures/commodity';
 import type { Label } from '../src/eval-policy';
 import { resultExcerpt, type SpendCheckInput } from '../src/spend-check';
 

@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@payper402/demo-seller": "*",
+    "@payper402/agent": "*",
     "@typesafe-ai/sdk": "0.7.0"
   }
 }
