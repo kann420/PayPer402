@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export interface SellerConfig {
   port: number;
-  /** External base URL, without a trailing slash. */
+  /** External base URL, without a trailing slash. Reserved for links; no route uses it yet. */
   publicUrl: string;
   /** The facilitator's base URL, without a trailing slash. */
   facilitatorUrl: string;

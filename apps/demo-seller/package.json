@@ -2,7 +2,7 @@
   "name": "@payper402/demo-seller",
   "version": "0.0.0",
   "private": true,
-  "description": "PayPer402 demo seller: four paid APIs behind @x402/express, settled with PayPal through the facilitator.",
+  "description": "PayPer402 demo seller: five paid travel APIs behind @x402/express, settled with PayPal through the facilitator.",
   "license": "MIT",
   "type": "module",
   "exports": {

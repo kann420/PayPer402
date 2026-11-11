@@ -20,24 +20,16 @@ import type { SellerAi } from './ai';
 import { createSellerApp } from './app';
 
 export const PAY_TO = 'sel_test';
-/** 2026-10-16T12:34:56.789Z. */
-export const NOW_MS = Date.UTC(2026, 9, 16, 12, 34, 56, 789);
 
 /** A seller AI that answers deterministically, or fails when told to. */
 export class FakeSellerAi implements SellerAi {
   fail = false;
-  readonly calls: { method: 'summarize' | 'translate'; input: unknown }[] = [];
+  readonly calls: { method: 'summarizeReviews'; input: unknown }[] = [];
 
-  async summarize(input: { title: string; text: string; maxWords: number }): Promise<string> {
-    this.calls.push({ method: 'summarize', input });
+  async summarizeReviews(input: { hotelName: string; reviews: string[]; focus?: string; maxWords: number }): Promise<string> {
+    this.calls.push({ method: 'summarizeReviews', input });
     if (this.fail) throw new Error('model down');
-    return `Summary of ${input.title} in ${input.maxWords} words or fewer.`;
-  }
-
-  async translate(input: { text: string; targetLanguage: string }): Promise<string> {
-    this.calls.push({ method: 'translate', input });
-    if (this.fail) throw new Error('model down');
-    return `[${input.targetLanguage}] ${input.text}`;
+    return `Summary of ${input.reviews.length} reviews of ${input.hotelName}${input.focus === undefined ? '' : ` on ${input.focus}`}.`;
   }
 }
 
@@ -50,7 +42,7 @@ export interface TestSeller {
   close(): Promise<void>;
 }
 
-export async function startTestSeller(options: { now?: () => number } = {}): Promise<TestSeller> {
+export async function startTestSeller(): Promise<TestSeller> {
   const key = generateAgentKey();
   const registry = new InMemoryAgentRegistry()
     .addOperator({ operatorId: 'op_test', walletStatus: 'active', caps: { perCall: 100, daily: 10_000, unsettled: 10_000 } })
@@ -71,7 +63,7 @@ export async function startTestSeller(options: { now?: () => number } = {}): Pro
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   server.on(
     'request',
-    createSellerApp({ payTo: PAY_TO, sellerName: 'Acme Data', publicUrl: url, resourceServer, ai, now: options.now ?? (() => NOW_MS) }),
+    createSellerApp({ payTo: PAY_TO, sellerName: 'Acme Data', publicUrl: url, resourceServer, ai }),
   );
   return {
     url,

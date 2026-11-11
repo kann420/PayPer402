@@ -3,26 +3,42 @@ import type { x402ResourceServer } from '@x402/core/server';
 import { paymentMiddleware } from '@x402/express';
 import type { z } from 'zod';
 import type { SellerAi } from './ai';
-import { ANALYST_NOTES, articleBySlug, articlesFor, wordCount, type Article } from './data/news';
-import { DEMO_SOURCE, QUOTE_ROWS, quoteAt, utcDate } from './data/quotes';
-import { SUMMARY_WORDS, catalog, premiumQuery, quoteQuery, routesConfig, summarizeBody, translateBody } from './services';
+import {
+  DEMO_SOURCE,
+  HOTELS,
+  HOTEL_IDS,
+  PLACES,
+  SEASON_NOTE,
+  inOrNear,
+  inSeason,
+  priceIndex,
+  ratesFor,
+  stayNights,
+  walkBetween,
+  wordCount,
+} from './data/kyoto';
+import { SUMMARY_MAX_WORDS, catalog, forecastQuery, ratesQuery, reviewBody, routesConfig, searchQuery, walkQuery } from './services';
 
 export interface SellerAppDeps {
   /** The seller id at the facilitator: the `payTo` of every route. */
   payTo: string;
   sellerName: string;
-  /** External base URL, without a trailing slash: newsroom links and the summarize origin check. */
+  /** External base URL, without a trailing slash. Reserved for links; no route uses it yet. */
   publicUrl: string;
   /** An initialized resource server with the PayPal scheme registered. */
   resourceServer: x402ResourceServer;
   ai: SellerAi;
-  /** Unix milliseconds, for the quote date and `asOf`. Defaults to `Date.now`. */
-  now?: () => number;
 }
 
 /** A body limit of 32 KB, checked before payment (design spec §3.4). */
 export const BODY_LIMIT = '32kb';
-const RELATED_NEWS_MAX = 3;
+const SEARCH_MAX_RESULTS = 6;
+const PRICE_NOTE = 'Indicative off-season price. Check Room Rates for your dates.';
+const FORECAST_OUTLOOK = 'Rates usually stay near the peak through April 5 and ease after April 10.';
+const FORECAST_NOTE =
+  'Our view: demand for the cherry blossom weeks is strong and the best-placed hotels fill early. ' +
+  'Prices tend to hold until the blossoms fade, so a lower rate later is unlikely. ' +
+  'Compare the actual nightly rates of a few hotels before you decide.';
 
 interface ValidationIssue {
   path: string;
@@ -65,45 +81,8 @@ async function withAi<T>(call: () => Promise<T>): Promise<T> {
   try {
     return await call();
   } catch {
-    throw new HttpError(503, 'ai_unavailable', 'The summary and translation service is unavailable; you were not charged');
+    throw new HttpError(503, 'ai_unavailable', 'The review summary service is unavailable; you were not charged');
   }
-}
-
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/**
- * Returns the article a summarize URL points to, or undefined. The URL must parse, have the
- * origin of `publicUrl`, and the path `/news/<slug>` of a known article. Nothing is fetched.
- */
-export function newsroomArticle(publicUrl: string, value: string): Article | undefined {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    return undefined;
-  }
-  if (url.origin !== new URL(publicUrl).origin) return undefined;
-  const match = /^\/news\/([a-z0-9-]{1,100})$/.exec(url.pathname);
-  return match?.[1] === undefined ? undefined : articleBySlug(match[1]);
-}
-
-function newsPage(article: Article, date: string): string {
-  return [
-    '<!doctype html>',
-    '<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">',
-    `<title>${escapeHtml(article.title)}</title></head><body>`,
-    `<article><h1>${escapeHtml(article.title)}</h1><p><time datetime="${date}">${date}</time></p>`,
-    `<p>${escapeHtml(article.body)}</p></article>`,
-    '<footer><p>Demo content from the Acme Data newsroom. Fictional.</p></footer>',
-    '</body></html>',
-  ].join('\n');
 }
 
 function errorHandler(): ErrorRequestHandler {
@@ -137,9 +116,7 @@ function errorHandler(): ErrorRequestHandler {
 
 /** The demo seller's Express app (design spec §3). No I/O at import time. */
 export function createSellerApp(deps: SellerAppDeps): Express {
-  const { payTo, sellerName, publicUrl, ai } = deps;
-  const now = deps.now ?? Date.now;
-  const newsUrl = (slug: string) => `${publicUrl}/news/${slug}`;
+  const { payTo, sellerName, ai } = deps;
 
   const app = express();
   app.disable('x-powered-by');
@@ -153,45 +130,63 @@ export function createSellerApp(deps: SellerAppDeps): Express {
   app.get('/v1/catalog', (_req, res) => {
     res.json(catalog({ name: sellerName, payTo }));
   });
-  app.get('/news/:slug', (req, res) => {
-    const article = articleBySlug(req.params['slug'] ?? '');
-    if (!article) throw new HttpError(404, 'not_found', 'Article not found');
-    res.type('html').send(newsPage(article, utcDate(now())));
-  });
 
   app.use(paymentMiddleware(routesConfig(payTo), deps.resourceServer));
 
-  app.get('/v1/quote', (req, res) => {
-    const { symbol } = parse(quoteQuery, req.query);
-    const nowMs = now();
-    const date = utcDate(nowMs);
+  app.get('/v1/hotels/search', (req, res) => {
+    const query = parse(searchQuery, req.query);
+    const hotels = HOTEL_IDS.map((id) => HOTELS[id])
+      .filter((hotel) => query.area === undefined || inOrNear(hotel.id, query.area))
+      .filter((hotel) => query.maxPricePerNight === undefined || hotel.base <= query.maxPricePerNight)
+      .sort((a, b) => b.rating - a.rating || (a.id < b.id ? -1 : 1))
+      .slice(0, SEARCH_MAX_RESULTS)
+      .map((hotel) => ({
+        id: hotel.id,
+        name: hotel.name,
+        area: hotel.area,
+        stars: hotel.stars,
+        style: hotel.style,
+        tags: hotel.tags,
+        rating: hotel.rating,
+        reviewCount: hotel.reviews.length,
+        fromPricePerNight: hotel.base,
+        priceNote: PRICE_NOTE,
+      }));
     res.json({
-      ...quoteAt(symbol, nowMs),
-      relatedNews: articlesFor(QUOTE_ROWS[symbol].topic)
-        .slice(0, RELATED_NEWS_MAX)
-        .map((article) => ({ title: article.title, url: newsUrl(article.slug), publishedAt: date })),
+      city: query.city,
+      checkIn: query.checkIn,
+      checkOut: query.checkOut,
+      hotels,
+      ...(stayNights(query.checkIn, query.checkOut).some(inSeason) ? { seasonNote: SEASON_NOTE } : {}),
       source: DEMO_SOURCE,
       simulated: true,
     });
   });
 
+  app.get('/v1/hotels/rates', (req, res) => {
+    const query = parse(ratesQuery, req.query);
+    res.json({ ...ratesFor(query.hotelId, query.checkIn, query.checkOut), source: DEMO_SOURCE, simulated: true });
+  });
+
   app.post(
-    '/v1/summarize',
+    '/v1/hotels/reviews/summary',
     handler(async (req, res) => {
-      const body = parse(summarizeBody, req.body);
-      const article = newsroomArticle(publicUrl, body.url);
-      if (!article) {
-        throw new HttpError(
-          400,
-          'unsupported_url',
-          `Only pages from this seller's newsroom (${new URL(publicUrl).origin}/news/…) can be summarized.`,
-        );
-      }
-      const maxWords = body.maxWords ?? SUMMARY_WORDS.default;
-      const summary = await withAi(() => ai.summarize({ title: article.title, text: article.body, maxWords }));
+      const body = parse(reviewBody, req.body);
+      const hotel = HOTELS[body.hotelId];
+      const summary = await withAi(() =>
+        ai.summarizeReviews({
+          hotelName: hotel.name,
+          reviews: hotel.reviews,
+          ...(body.focus === undefined ? {} : { focus: body.focus }),
+          maxWords: SUMMARY_MAX_WORDS,
+        }),
+      );
       res.json({
-        url: newsUrl(article.slug),
-        title: article.title,
+        hotelId: hotel.id,
+        name: hotel.name,
+        rating: hotel.rating,
+        reviewCount: hotel.reviews.length,
+        focus: body.focus ?? null,
         summary,
         words: wordCount(summary),
         source: DEMO_SOURCE,
@@ -200,27 +195,28 @@ export function createSellerApp(deps: SellerAppDeps): Express {
     }),
   );
 
-  app.post(
-    '/v1/translate',
-    handler(async (req, res) => {
-      const body = parse(translateBody, req.body);
-      const translatedText = await withAi(() => ai.translate({ text: body.text, targetLanguage: body.targetLanguage }));
-      res.json({ targetLanguage: body.targetLanguage, translatedText, characters: body.text.length });
-    }),
-  );
-
-  app.get('/v1/news/premium', (req, res) => {
-    const { topic } = parse(premiumQuery, req.query);
-    const date = utcDate(now());
+  app.get('/v1/places/walk', (req, res) => {
+    const query = parse(walkQuery, req.query);
     res.json({
-      topic,
-      articles: articlesFor(topic).map((article) => ({
-        title: article.title,
-        url: newsUrl(article.slug),
-        publishedAt: date,
-        body: article.body,
-      })),
-      analystNote: ANALYST_NOTES[topic],
+      hotelId: query.hotelId,
+      hotelName: HOTELS[query.hotelId].name,
+      place: query.place,
+      placeName: PLACES[query.place].name,
+      ...walkBetween(query.hotelId, query.place),
+      source: DEMO_SOURCE,
+      simulated: true,
+    });
+  });
+
+  app.get('/v1/hotels/forecast', (req, res) => {
+    const query = parse(forecastQuery, req.query);
+    res.json({
+      city: query.city,
+      checkIn: query.checkIn,
+      checkOut: query.checkOut,
+      outlook: FORECAST_OUTLOOK,
+      dailyIndex: stayNights(query.checkIn, query.checkOut).map(priceIndex),
+      analystNote: FORECAST_NOTE,
       source: DEMO_SOURCE,
       simulated: true,
     });

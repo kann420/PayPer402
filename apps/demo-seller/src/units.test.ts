@@ -1,12 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it } from 'vitest';
 import { priceToCents } from '@payper402/scheme-paypal';
-import { SELLER_AI_BETAS, SUMMARIZE_SYSTEM, TRANSLATE_SYSTEM, createClaudeSellerAi, SellerAiError } from './ai';
-import { newsroomArticle } from './app';
+import { SELLER_AI_BETAS, REVIEWS_SYSTEM, createClaudeSellerAi, SellerAiError } from './ai';
 import { ConfigError, loadSellerConfig } from './config';
-import { ANALYST_NOTES, ARTICLES, articlesFor, wordCount } from './data/news';
-import { QUOTE_ROWS, dailyMove, priceOn, quoteAt, utcDate } from './data/quotes';
-import { SERVICES, TOPICS, catalog, routesConfig, translateBody } from './services';
+import { HOTELS, HOTEL_IDS, PLACES, inSeason, nightlyPrice, ratesFor, roomsOn, stayNights, walkBetween, type HotelId } from './data/kyoto';
+import { SERVICES, catalog, forecastQuery, ratesQuery, reviewBody, routesConfig, searchQuery } from './services';
+
+const CHECK_IN = '2027-03-30';
+const CHECK_OUT = '2027-04-02';
 
 describe('services table', () => {
   it('every route config price equals the catalog price, and every service is protected', () => {
@@ -25,12 +26,13 @@ describe('services table', () => {
     }
   });
 
-  it('lists the four services at the design-spec prices', () => {
-    expect(SERVICES.map((s) => [s.id, s.priceCents])).toEqual([
-      ['quote', 2],
-      ['summarize', 5],
-      ['translate', 1],
-      ['premium_news', 25],
+  it('lists exactly the five services at the design-spec prices', () => {
+    expect(SERVICES.map((s) => [s.id, s.method, s.path, s.priceCents])).toEqual([
+      ['hotel_search', 'GET', '/v1/hotels/search', 2],
+      ['hotel_rates', 'GET', '/v1/hotels/rates', 1],
+      ['review_summary', 'POST', '/v1/hotels/reviews/summary', 5],
+      ['walking_time', 'GET', '/v1/places/walk', 1],
+      ['price_forecast', 'GET', '/v1/hotels/forecast', 25],
     ]);
     expect(catalog({ name: 'Acme Data', payTo: 'sel_x' })).toMatchObject({
       seller: { name: 'Acme Data', payTo: 'sel_x' },
@@ -39,89 +41,141 @@ describe('services table', () => {
       asset: 'USD',
     });
   });
+
+  it('declares required params that exist in the param table', () => {
+    for (const service of SERVICES) {
+      for (const name of service.required) expect(service.params[name], `${service.id}.${name}`).toBeDefined();
+    }
+  });
 });
 
-describe('quote formula', () => {
-  const day = Date.UTC(2026, 9, 16, 9, 30, 15);
+describe('season and nightly price', () => {
+  it('opens the cherry blossom window on March 25 and closes it after April 10', () => {
+    expect(inSeason('2027-03-24')).toBe(false);
+    expect(inSeason('2027-03-25')).toBe(true);
+    expect(inSeason('2027-04-10')).toBe(true);
+    expect(inSeason('2027-04-11')).toBe(false);
+  });
 
-  it('is deterministic per UTC day, with d within ±4%', () => {
-    const { asOf: _morning, ...morning } = quoteAt('KC', day);
-    const { asOf: _night, ...night } = quoteAt('KC', Date.UTC(2026, 9, 16, 23, 59, 59));
-    expect(night).toEqual(morning);
-    for (let i = 0; i < 400; i += 1) {
-      const date = utcDate(day + i * 86_400_000);
-      for (const symbol of ['KC', 'CC', 'SB', 'CT'] as const) {
-        const d = dailyMove(date, symbol);
-        expect(Math.abs(d)).toBeLessThanOrEqual(0.04);
+  it('is deterministic per hotel and night, within 3% of base times the season factor', () => {
+    for (const id of HOTEL_IDS) {
+      for (const date of stayNights('2027-03-20', '2027-04-15')) {
+        const price = nightlyPrice(id, date);
+        expect(price).toBe(nightlyPrice(id, date));
+        const expected = HOTELS[id].base * (inSeason(date) ? 1.5 : 1);
+        expect(price).toBeGreaterThanOrEqual(Math.floor(expected * 0.97));
+        expect(price).toBeLessThanOrEqual(Math.ceil(expected * 1.03));
+        expect(Number.isInteger(price)).toBe(true);
       }
     }
-    expect(dailyMove('2026-10-16', 'KC')).not.toBe(dailyMove('2026-10-17', 'KC'));
   });
 
-  it('uses the previous UTC day for previousClose and rounds to 2 decimals', () => {
-    const quote = quoteAt('CC', day);
-    expect(quote.price).toBe(priceOn('2026-10-16', 'CC'));
-    expect(quote.previousClose).toBe(priceOn('2026-10-15', 'CC'));
-    expect(quote.change).toBe(Math.round((quote.price - quote.previousClose) * 100) / 100);
-    for (const value of [quote.price, quote.previousClose, quote.change, quote.changePercent]) {
-      expect(Math.round(value * 100) / 100).toBe(value);
-    }
-    expect(quote).toMatchObject({ symbol: 'CC', currency: 'USD', name: QUOTE_ROWS.CC.name, asOf: '2026-10-16T09:30:00.000Z' });
+  it('lists the nights from check-in up to, not including, check-out', () => {
+    expect(stayNights(CHECK_IN, CHECK_OUT)).toEqual(['2027-03-30', '2027-03-31', '2027-04-01']);
+    expect(stayNights('2027-02-27', '2027-03-02')).toEqual(['2027-02-27', '2027-02-28', '2027-03-01']);
   });
 });
 
-describe('newsroom fixtures', () => {
-  it('has 2 or 3 articles per topic, 120 to 250 words each, unique slugs, and short analyst notes', () => {
-    for (const topic of TOPICS) {
-      expect(articlesFor(topic).length).toBeGreaterThanOrEqual(2);
-      expect(articlesFor(topic).length).toBeLessThanOrEqual(3);
-      const words = wordCount(ANALYST_NOTES[topic]);
-      expect(words).toBeGreaterThanOrEqual(40);
-      expect(words).toBeLessThanOrEqual(80);
+describe('rooms left', () => {
+  it('is 1 to 6 and the minimum across the stay', () => {
+    const id: HotelId = 'gion-lantern-house';
+    const nights = stayNights('2027-05-01', '2027-05-15');
+    for (const date of nights) {
+      expect(roomsOn(id, date)).toBeGreaterThanOrEqual(1);
+      expect(roomsOn(id, date)).toBeLessThanOrEqual(6);
     }
-    for (const article of ARTICLES) {
-      const words = wordCount(article.body);
-      expect(words, article.slug).toBeGreaterThanOrEqual(120);
-      expect(words, article.slug).toBeLessThanOrEqual(250);
-    }
-    expect(new Set(ARTICLES.map((a) => a.slug)).size).toBe(ARTICLES.length);
+    expect(ratesFor(id, '2027-05-01', '2027-05-15').roomsLeft).toBe(Math.min(...nights.map((date) => roomsOn(id, date))));
+  });
+
+  it('reports the sold-out hotel as unavailable when any night is in the season', () => {
+    const inside = ratesFor('kamo-river-suites', CHECK_IN, CHECK_OUT);
+    expect(inside).toMatchObject({ roomsLeft: 0, available: false });
+    expect(ratesFor('kamo-river-suites', '2027-04-09', '2027-04-12')).toMatchObject({ roomsLeft: 0, available: false });
+    expect(ratesFor('kamo-river-suites', '2027-03-22', '2027-03-25')).toMatchObject({ available: true });
+    expect(ratesFor('kamo-river-suites', '2027-05-01', '2027-05-03').roomsLeft).toBeGreaterThan(0);
+  });
+
+  it('adds a season note only for stays that touch the season', () => {
+    expect(ratesFor('gion-lantern-house', CHECK_IN, CHECK_OUT).seasonNote).toMatch(/^Cherry blossom season/);
+    expect(ratesFor('gion-lantern-house', '2027-05-01', '2027-05-03').seasonNote).toBeUndefined();
   });
 });
 
-describe('summarize URL check', () => {
-  const origin = 'https://seller.example';
-  const slug = ARTICLES[0]?.slug ?? '';
+describe('design invariants for the default stay', () => {
+  const rates = (id: HotelId) => ratesFor(id, CHECK_IN, CHECK_OUT);
 
-  it('accepts the seller origin plus a known slug', () => {
-    expect(newsroomArticle(origin, `${origin}/news/${slug}`)?.slug).toBe(slug);
+  it('keeps the story roles of the fixtures', () => {
+    expect(rates('higashiyama-stone-garden-inn').averagePerNight).toBeLessThanOrEqual(250);
+    expect(rates('higashiyama-stone-garden-inn').averagePerNight).toBeGreaterThan(200);
+    expect(rates('gion-lantern-house').averagePerNight).toBeLessThanOrEqual(250);
+    expect(rates('yasaka-courtyard-hotel').averagePerNight).toBeGreaterThan(250);
+    expect(rates('kamo-river-suites').available).toBe(false);
+    const available = HOTEL_IDS.map(rates).filter((r) => r.available);
+    const cheapest = available.reduce((a, b) => (b.total < a.total ? b : a));
+    expect(cheapest.hotelId).toBe('shijo-riverside-lodge');
   });
 
-  it.each([
-    ['another origin', `https://other.example/news/${slug}`],
-    ['http versus https', `http://seller.example/news/${slug}`],
-    ['another port', `https://seller.example:8443/news/${slug}`],
-    ['an unknown slug', `${origin}/news/no-such-article`],
-    ['a path traversal attempt', `${origin}/news/../v1/quote`],
-    ['an encoded traversal', `${origin}/news/%2e%2e/${slug}`],
-    ['a nested path', `${origin}/news/${slug}/extra`],
-    ['a non-URL', 'not a url'],
-  ])('rejects %s', (_label, value) => {
-    expect(newsroomArticle(origin, value)).toBeUndefined();
+  it('puts the right answer within 10 minutes of Kiyomizu-dera and the station hotel far from Gion', () => {
+    expect(walkBetween('higashiyama-stone-garden-inn', 'kiyomizu-dera').minutes).toBeLessThanOrEqual(10);
+    expect(walkBetween('kyoto-station-garden-hotel', 'gion-shijo-station').minutes).toBeGreaterThanOrEqual(30);
   });
 });
 
-describe('translate validation', () => {
-  it.each(['Vietnamese', 'vi', 'Brazilian Portuguese', 'zh-Hant'])('accepts the target language %s', (targetLanguage) => {
-    expect(translateBody.safeParse({ text: 'hi', targetLanguage }).success).toBe(true);
+describe('walking time', () => {
+  it('is haversine times 1.3 at 80 m per minute, rounded up, with the distance in km to one decimal', () => {
+    const hotel = HOTELS['higashiyama-stone-garden-inn'];
+    const place = PLACES['kiyomizu-dera'];
+    const rad = (deg: number) => (deg * Math.PI) / 180;
+    const a = Math.sin(rad(place.lat - hotel.lat) / 2) ** 2 + Math.cos(rad(hotel.lat)) * Math.cos(rad(place.lat)) * Math.sin(rad(place.lng - hotel.lng) / 2) ** 2;
+    const metres = 2 * 6_371_000 * Math.asin(Math.sqrt(a)) * 1.3;
+    expect(walkBetween(hotel.id, place.id)).toEqual({ distanceKm: Math.round(metres / 100) / 10, minutes: Math.ceil(metres / 80) });
+  });
+});
+
+describe('request validation', () => {
+  it('accepts the default stay and rejects bad dates and stays', () => {
+    expect(ratesQuery.safeParse({ hotelId: 'gion-lantern-house', checkIn: CHECK_IN, checkOut: CHECK_OUT }).success).toBe(true);
+    expect(forecastQuery.safeParse({ city: 'kyoto', checkIn: CHECK_IN, checkOut: '2027-04-13' }).success).toBe(true);
+    for (const [checkIn, checkOut] of [
+      ['2027-3-30', CHECK_OUT],
+      ['2027-02-29', CHECK_OUT],
+      [CHECK_OUT, CHECK_IN],
+      [CHECK_IN, CHECK_IN],
+      [CHECK_IN, '2027-04-14'],
+    ] as const) {
+      expect(ratesQuery.safeParse({ hotelId: 'gion-lantern-house', checkIn, checkOut }).success, `${checkIn}..${checkOut}`).toBe(false);
+    }
   });
 
-  it.each(['', '1abc', 'Viet;namese', 'x'.repeat(33), ' leading'])('rejects the target language %j', (targetLanguage) => {
-    expect(translateBody.safeParse({ text: 'hi', targetLanguage }).success).toBe(false);
+  it('checks search filters and the price bounds', () => {
+    const base = { city: 'kyoto', checkIn: CHECK_IN, checkOut: CHECK_OUT };
+    expect(searchQuery.parse({ ...base, area: 'gion', maxPricePerNight: '250' })).toMatchObject({ area: 'gion', maxPricePerNight: 250 });
+    expect(searchQuery.safeParse({ ...base, area: 'tokyo' }).success).toBe(false);
+    expect(searchQuery.safeParse({ ...base, maxPricePerNight: '19' }).success).toBe(false);
+    expect(searchQuery.safeParse({ ...base, maxPricePerNight: '2001' }).success).toBe(false);
+    expect(searchQuery.safeParse({ ...base, maxPricePerNight: '99.5' }).success).toBe(false);
+    expect(searchQuery.safeParse({ ...base, city: 'osaka' }).success).toBe(false);
   });
 
-  it('limits the text to 4000 characters', () => {
-    expect(translateBody.safeParse({ text: 'a'.repeat(4000), targetLanguage: 'vi' }).success).toBe(true);
-    expect(translateBody.safeParse({ text: 'a'.repeat(4001), targetLanguage: 'vi' }).success).toBe(false);
+  it('limits the review focus to 80 characters', () => {
+    expect(reviewBody.safeParse({ hotelId: 'gion-lantern-house', focus: 'a'.repeat(80) }).success).toBe(true);
+    expect(reviewBody.safeParse({ hotelId: 'gion-lantern-house', focus: 'a'.repeat(81) }).success).toBe(false);
+    expect(reviewBody.safeParse({ hotelId: 'gion-lantern-house' }).success).toBe(true);
+  });
+});
+
+describe('fixtures', () => {
+  it('has seven fictional hotels with five reviews each', () => {
+    expect(HOTEL_IDS).toHaveLength(7);
+    for (const id of HOTEL_IDS) {
+      const hotel = HOTELS[id];
+      expect(hotel.id).toBe(id);
+      expect(hotel.reviews).toHaveLength(5);
+      expect(hotel.rating).toBeGreaterThanOrEqual(3.6);
+      expect(hotel.rating).toBeLessThanOrEqual(4.8);
+      expect(hotel.tags.length).toBeGreaterThanOrEqual(2);
+      expect(hotel.tags.length).toBeLessThanOrEqual(4);
+    }
   });
 });
 
@@ -178,6 +232,8 @@ const messageBody = (content: Record<string, unknown>[], stopReason = 'end_turn'
   usage: { input_tokens: 1, output_tokens: 1 },
 });
 
+const reviewInput = { hotelName: 'Inn "A"', reviews: ['Quiet.', 'Loud.'], maxWords: 50 };
+
 describe('createClaudeSellerAi', () => {
   it('sends the model, effort low, max_tokens, the fallbacks beta and field, and the static system prompt', async () => {
     const { client, captured } = fakeClient({
@@ -185,21 +241,27 @@ describe('createClaudeSellerAi', () => {
       body: messageBody([{ type: 'thinking', thinking: '', signature: 's' }, { type: 'text', text: 'A short summary.' }]),
     });
     const ai = createClaudeSellerAi(client, 'claude-opus-5-5');
-    expect(await ai.summarize({ title: 'Rain "delays"', text: 'Body text', maxWords: 50 })).toBe('A short summary.');
-    expect(await ai.translate({ text: 'Hello', targetLanguage: 'Vietnamese' })).toBe('A short summary.');
-    const [summarize, translate] = captured;
-    expect(summarize?.body).toEqual({
+    expect(await ai.summarizeReviews({ ...reviewInput, focus: 'noise <b>' })).toBe('A short summary.');
+    expect(await ai.summarizeReviews(reviewInput)).toBe('A short summary.');
+    const [withFocus, withoutFocus] = captured;
+    expect(withFocus?.body).toEqual({
       model: 'claude-opus-5-5',
       max_tokens: 8000,
       output_config: { effort: 'low' },
       fallbacks: 'default',
-      system: SUMMARIZE_SYSTEM,
-      messages: [{ role: 'user', content: 'Summarize in at most 50 words.\n<article title="Rain &quot;delays&quot;">\nBody text\n</article>' }],
+      system: REVIEWS_SYSTEM,
+      messages: [
+        {
+          role: 'user',
+          content:
+            'Summarize in at most 50 words.\n<focus>noise &lt;b&gt;</focus>\n<hotel name="Inn &quot;A&quot;">\n<review>Quiet.</review>\n<review>Loud.</review>\n</hotel>',
+        },
+      ],
     });
-    expect(summarize?.headers['anthropic-beta']).toBe(SELLER_AI_BETAS.join(','));
-    expect(translate?.body).toMatchObject({
-      system: TRANSLATE_SYSTEM,
-      messages: [{ role: 'user', content: 'Translate into Vietnamese.\n<text>\nHello\n</text>' }],
+    expect(withFocus?.headers['anthropic-beta']).toBe(SELLER_AI_BETAS.join(','));
+    expect(withoutFocus?.body).toMatchObject({
+      system: REVIEWS_SYSTEM,
+      messages: [{ role: 'user', content: 'Summarize in at most 50 words.\n<hotel name="Inn &quot;A&quot;">\n<review>Quiet.</review>\n<review>Loud.</review>\n</hotel>' }],
     });
   });
 
@@ -209,13 +271,13 @@ describe('createClaudeSellerAi', () => {
     ['no text block', messageBody([{ type: 'thinking', thinking: '', signature: 's' }])],
   ])('throws on %s', async (_label, body) => {
     const ai = createClaudeSellerAi(fakeClient({ status: 200, body }).client, 'claude-opus-5-5');
-    await expect(ai.summarize({ title: 't', text: 'x', maxWords: 30 })).rejects.toBeInstanceOf(SellerAiError);
+    await expect(ai.summarizeReviews(reviewInput)).rejects.toBeInstanceOf(SellerAiError);
   });
 
   it('throws a SellerAiError with the status only on a typed API error', async () => {
     const { client } = fakeClient({ status: 529, body: { type: 'error', error: { type: 'overloaded_error', message: 'raw body detail' } } });
     const ai = createClaudeSellerAi(client, 'claude-opus-5-5');
-    const err = await ai.translate({ text: 'x', targetLanguage: 'vi' }).catch((e: unknown) => e);
+    const err = await ai.summarizeReviews(reviewInput).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(SellerAiError);
     expect((err as Error).message).toBe('The model request failed (HTTP 529)');
     expect((err as Error).message).not.toContain('raw body detail');

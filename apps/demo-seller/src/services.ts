@@ -1,6 +1,7 @@
 import type { PaymentOption, RouteConfig } from '@x402/core/http';
 import { ASSET, PAYPAL_SANDBOX_NETWORK, SCHEME } from '@payper402/scheme-paypal';
 import { z } from 'zod';
+import { AREAS, CITIES, HOTEL_IDS, MAX_NIGHTS, PLACE_IDS, isRealDate, nightsBetween } from './data/kyoto';
 
 /** A catalog param: a string or an integer, with optional bounds (design spec §3.3). */
 export type ParamSpec =
@@ -18,69 +19,84 @@ export interface ServiceDef {
   required: string[];
 }
 
-export const SYMBOLS = ['KC', 'CC', 'SB', 'CT'] as const;
-export type CommoditySymbol = (typeof SYMBOLS)[number];
-export const TOPICS = ['coffee', 'cocoa', 'sugar', 'cotton'] as const;
-export type Topic = (typeof TOPICS)[number];
+export const FOCUS_MAX = 80;
+export const SUMMARY_MAX_WORDS = 90;
+export const PRICE_LIMIT = { min: 20, max: 2000 };
 
-export const SUMMARIZE_URL_MAX = 300;
-export const SUMMARY_WORDS = { min: 30, max: 300, default: 120 } as const;
-export const TRANSLATE_TEXT_MAX = 4000;
-export const TARGET_LANGUAGE = /^[A-Za-z][A-Za-z -]{0,31}$/;
+const CHECK_IN: ParamSpec = { type: 'string', description: 'Check-in date, YYYY-MM-DD' };
+const CHECK_OUT: ParamSpec = { type: 'string', description: `Check-out date, YYYY-MM-DD (after check-in, at most ${MAX_NIGHTS} nights)` };
+const HOTEL_ID: ParamSpec = { type: 'string', description: 'Hotel id from Hotel Search', enum: [...HOTEL_IDS] };
+const CITY: ParamSpec = { type: 'string', description: 'City', enum: [...CITIES] };
 
 /** The single source of truth for the paid services (design spec §3.2). */
 export const SERVICES: readonly ServiceDef[] = [
   {
-    id: 'quote',
-    name: 'Market Quote API',
+    id: 'hotel_search',
+    name: 'Hotel Search API',
     description:
-      "Latest futures price for a soft commodity (KC coffee, CC cocoa, SB sugar, CT cotton), with links to today's related news pages.",
+      'Search hotels in a city for your dates. Returns candidates with an indicative off-season price; check Room Rates for the real price of your nights.',
     method: 'GET',
-    path: '/v1/quote',
+    path: '/v1/hotels/search',
     priceCents: 2,
-    params: { symbol: { type: 'string', description: 'Commodity symbol', enum: [...SYMBOLS] } },
-    required: ['symbol'],
-  },
-  {
-    id: 'summarize',
-    name: 'Page Summary API',
-    description: 'Reads a news page from the Acme Data newsroom and returns a short summary.',
-    method: 'POST',
-    path: '/v1/summarize',
-    priceCents: 5,
     params: {
-      url: { type: 'string', description: 'URL of a newsroom page', maxLength: SUMMARIZE_URL_MAX },
-      maxWords: {
+      city: CITY,
+      checkIn: CHECK_IN,
+      checkOut: CHECK_OUT,
+      area: { type: 'string', description: 'Only hotels in or within a 15-minute walk of this area (optional)', enum: [...AREAS] },
+      maxPricePerNight: {
         type: 'integer',
-        description: `Longest summary in words (default ${SUMMARY_WORDS.default})`,
-        minimum: SUMMARY_WORDS.min,
-        maximum: SUMMARY_WORDS.max,
+        description: 'Highest indicative price per night in USD (optional)',
+        minimum: PRICE_LIMIT.min,
+        maximum: PRICE_LIMIT.max,
       },
     },
-    required: ['url'],
+    required: ['city', 'checkIn', 'checkOut'],
   },
   {
-    id: 'translate',
-    name: 'Translate API',
-    description: 'Translates text into another language.',
+    id: 'hotel_rates',
+    name: 'Room Rates API',
+    description: 'Nightly rates and rooms left for one hotel and your dates, with the cancellation policy.',
+    method: 'GET',
+    path: '/v1/hotels/rates',
+    priceCents: 1,
+    params: { hotelId: HOTEL_ID, checkIn: CHECK_IN, checkOut: CHECK_OUT },
+    required: ['hotelId', 'checkIn', 'checkOut'],
+  },
+  {
+    id: 'review_summary',
+    name: 'Review Summary API',
+    description: "A short summary of a hotel's guest reviews, optionally focused on one topic such as noise or location.",
     method: 'POST',
-    path: '/v1/translate',
+    path: '/v1/hotels/reviews/summary',
+    priceCents: 5,
+    params: {
+      hotelId: HOTEL_ID,
+      focus: { type: 'string', description: 'A topic to focus on, for example "noise at night" (optional)', maxLength: FOCUS_MAX },
+    },
+    required: ['hotelId'],
+  },
+  {
+    id: 'walking_time',
+    name: 'Walking Time API',
+    description: 'Walking time and distance from a hotel to a landmark.',
+    method: 'GET',
+    path: '/v1/places/walk',
     priceCents: 1,
     params: {
-      text: { type: 'string', description: 'Text to translate', maxLength: TRANSLATE_TEXT_MAX },
-      targetLanguage: { type: 'string', description: 'Language name or code, for example "Vietnamese" or "vi"', maxLength: 32 },
+      hotelId: HOTEL_ID,
+      place: { type: 'string', description: 'Landmark id', enum: [...PLACE_IDS] },
     },
-    required: ['text', 'targetLanguage'],
+    required: ['hotelId', 'place'],
   },
   {
-    id: 'premium_news',
-    name: 'Premium News API',
-    description: 'Full-length coverage of a commodity topic, with analyst commentary.',
+    id: 'price_forecast',
+    name: 'Price Forecast API (premium)',
+    description: 'Analyst forecast of how hotel prices in the city move around your dates.',
     method: 'GET',
-    path: '/v1/news/premium',
+    path: '/v1/hotels/forecast',
     priceCents: 25,
-    params: { topic: { type: 'string', description: 'Commodity topic', enum: [...TOPICS] } },
-    required: ['topic'],
+    params: { city: CITY, checkIn: CHECK_IN, checkOut: CHECK_OUT },
+    required: ['city', 'checkIn', 'checkOut'],
   },
 ];
 
@@ -123,16 +139,32 @@ export function routesConfig(payTo: string): Record<string, RouteConfig> {
 }
 
 /** Handler-side param schemas. Payment is verified before these run (design spec §3.4). */
-export const quoteQuery = z.strictObject({ symbol: z.enum(SYMBOLS) });
+const date = z.string().refine(isRealDate, 'must be a real date, YYYY-MM-DD');
+const hotelId = z.enum(HOTEL_IDS);
+const city = z.enum(CITIES);
 
-export const summarizeBody = z.strictObject({
-  url: z.string().min(1).max(SUMMARIZE_URL_MAX),
-  maxWords: z.number().int().min(SUMMARY_WORDS.min).max(SUMMARY_WORDS.max).optional(),
-});
+/** A stay: `checkOut` after `checkIn`, at most 14 nights. Runs only when both dates are real dates. */
+function validStay(value: { checkIn: string; checkOut: string }, ctx: z.RefinementCtx): void {
+  if (!isRealDate(value.checkIn) || !isRealDate(value.checkOut)) return;
+  const nights = nightsBetween(value.checkIn, value.checkOut);
+  if (nights < 1) ctx.addIssue({ code: 'custom', path: ['checkOut'], message: 'must be after checkIn' });
+  else if (nights > MAX_NIGHTS) ctx.addIssue({ code: 'custom', path: ['checkOut'], message: `must be at most ${MAX_NIGHTS} nights after checkIn` });
+}
 
-export const translateBody = z.strictObject({
-  text: z.string().min(1).max(TRANSLATE_TEXT_MAX),
-  targetLanguage: z.string().regex(TARGET_LANGUAGE, 'must be a language name or code (letters, spaces and hyphens)'),
-});
+export const searchQuery = z
+  .strictObject({
+    city,
+    checkIn: date,
+    checkOut: date,
+    area: z.enum(AREAS).optional(),
+    maxPricePerNight: z.coerce.number().int().min(PRICE_LIMIT.min).max(PRICE_LIMIT.max).optional(),
+  })
+  .superRefine(validStay);
 
-export const premiumQuery = z.strictObject({ topic: z.enum(TOPICS) });
+export const ratesQuery = z.strictObject({ hotelId, checkIn: date, checkOut: date }).superRefine(validStay);
+
+export const reviewBody = z.strictObject({ hotelId, focus: z.string().min(1).max(FOCUS_MAX).optional() });
+
+export const walkQuery = z.strictObject({ hotelId, place: z.enum(PLACE_IDS) });
+
+export const forecastQuery = z.strictObject({ city, checkIn: date, checkOut: date }).superRefine(validStay);
