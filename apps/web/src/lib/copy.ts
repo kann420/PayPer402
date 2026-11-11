@@ -16,8 +16,9 @@ export function errorCopy(code: string, message: string): string {
 }
 
 /**
- * The live run's default task (design spec §10.10). English, so the report is in English, and the
- * story still buys all three services: the quote, a summary and a translation. The agent
- * package's own `DEFAULT_TASK` (CLI and demo) is unchanged.
+ * The live run's default task (design spec §10.10). English, so the report is in English. It is
+ * the same trip-research task as the agent package's `DEFAULT_TASK` (CLI and demo): the agent
+ * searches, checks rates and reviews, and recommends one hotel.
  */
-export const WEB_DEFAULT_TASK = "Brief me on today's coffee market: current price, top news, and the top headline translated into Spanish.";
+export const WEB_DEFAULT_TASK =
+  'Find me a quiet hotel in Kyoto near Gion for cherry blossom season, March 30 to April 2, 2027, under $250 a night. Walking distance to Kiyomizu-dera is a plus.';

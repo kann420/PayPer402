@@ -6,12 +6,15 @@ import { createProbeHandler } from './seller';
 import { createSessionHandler } from './session';
 
 describe('probe samples', () => {
-  it('uses fixed sample params per service; summarize always gets the fixed URL', () => {
-    expect(sampleRequest('quote', 'http://s')).toEqual({ query: { symbol: 'KC' } });
-    expect(sampleRequest('summarize', 'http://s')).toEqual({ body: { url: 'http://s/news/x' } });
-    expect(sampleRequest('translate', 'http://s')).toEqual({ body: { text: 'Hello', targetLanguage: 'Vietnamese' } });
-    expect(sampleRequest('premium_news', 'http://s')).toEqual({ query: { topic: 'coffee' } });
-    expect(sampleRequest('other', 'http://s')).toBeUndefined();
+  it('uses fixed sample params per service: the default stay at the sample hotel', () => {
+    const stay = { checkIn: '2027-03-30', checkOut: '2027-04-02' };
+    const hotelId = 'higashiyama-stone-garden-inn';
+    expect(sampleRequest('hotel_search')).toEqual({ query: { city: 'kyoto', ...stay } });
+    expect(sampleRequest('hotel_rates')).toEqual({ query: { hotelId, ...stay } });
+    expect(sampleRequest('review_summary')).toEqual({ body: { hotelId, focus: 'noise at night' } });
+    expect(sampleRequest('walking_time')).toEqual({ query: { hotelId, place: 'kiyomizu-dera' } });
+    expect(sampleRequest('price_forecast')).toEqual({ query: { city: 'kyoto', ...stay } });
+    expect(sampleRequest('other')).toBeUndefined();
   });
 
   it('decodes the PAYMENT-REQUIRED header', () => {
@@ -34,17 +37,18 @@ describe('GET /api/seller/probe/:serviceId (real seller app, fake AI, harness)',
   const probe = (id: string, cookie?: string | null) => createProbeHandler(w.deps)(w.request(`/api/seller/probe/${id}`, cookie === undefined ? {} : { cookie }), id);
 
   it('needs a valid session', async () => {
-    const res = await probe('quote', null);
+    const res = await probe('hotel_rates', null);
     expect(res.status).toBe(401);
   });
 
   it('answers 402 with a decoded batch-settlement / paypal:sandbox / USD requirement, for every service', async () => {
     w.keep(await createSessionHandler(w.deps)(w.request('/api/session', { body: { role: 'seller' } })));
     for (const [id, cents] of [
-      ['quote', '2'],
-      ['summarize', '5'],
-      ['translate', '1'],
-      ['premium_news', '25'],
+      ['hotel_search', '2'],
+      ['hotel_rates', '1'],
+      ['review_summary', '5'],
+      ['walking_time', '1'],
+      ['price_forecast', '25'],
     ] as const) {
       const res = await probe(id);
       expect(res.status, id).toBe(200);
@@ -67,7 +71,7 @@ describe('GET /api/seller/probe/:serviceId (real seller app, fake AI, harness)',
     w.keep(await createSessionHandler(w.deps)(w.request('/api/session', { body: { role: 'seller' } })));
     // Without WEB_TRUST_PROXY every request shares the client key 'all' (design spec §15.3).
     for (let i = 0; i < 30; i++) w.deps.limits.probesPerClient.hit('all');
-    const limited = await probe('quote');
+    const limited = await probe('hotel_rates');
     expect(limited.status).toBe(429);
     expect(await body(limited)).toMatchObject({ error: 'probe_limit' });
   });

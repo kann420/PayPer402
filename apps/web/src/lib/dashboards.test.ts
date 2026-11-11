@@ -13,8 +13,8 @@ const catalog: Catalog = {
   network: 'paypal:sandbox',
   asset: 'USD',
   services: [
-    { id: 'quote', name: 'Market Quote API', description: '', method: 'GET', path: '/v1/quote', priceCents: 2, params: {}, required: [] },
-    { id: 'summarize', name: 'Page Summary API', description: '', method: 'POST', path: '/v1/summarize', priceCents: 5, params: {}, required: [] },
+    { id: 'hotel_rates', name: 'Room Rates API', description: '', method: 'GET', path: '/v1/hotels/rates', priceCents: 1, params: {}, required: [] },
+    { id: 'review_summary', name: 'Review Summary API', description: '', method: 'POST', path: '/v1/hotels/reviews/summary', priceCents: 5, params: {}, required: [] },
   ],
 };
 
@@ -24,8 +24,8 @@ describe('rows', () => {
   it('turns commitments into Studio rows', () => {
     const rows = operatorRows(
       [
-        { id: 'c1', recordedAt: T, path: '/v1/quote?symbol=KC', amount: 2, state: 'unsettled', settlementId: null, agentName: 'research-bot' },
-        { id: 'c2', recordedAt: T + 60, path: '/v1/summarize', amount: 5, state: 'settled', settlementId: 'stl_9f2aK3x8LmQpZ', agentName: 'price-watcher' },
+        { id: 'c1', recordedAt: T, path: '/v1/hotels/rates?hotelId=gion-lantern-house', amount: 1, state: 'unsettled', settlementId: null, agentName: 'trip-planner' },
+        { id: 'c2', recordedAt: T + 60, path: '/v1/hotels/reviews/summary', amount: 5, state: 'settled', settlementId: 'stl_9f2aK3x8LmQpZ', agentName: 'price-watcher' },
         { id: 'c3', recordedAt: T, path: '/v1/unknown', amount: 3, state: 'uncollectable', settlementId: null, agentName: 'x' },
       ],
       catalog,
@@ -34,17 +34,17 @@ describe('rows', () => {
       id: 'c1',
       time: '2026-11-02T23:59:30',
       day: '2026-11-02',
-      agent: 'research-bot',
-      service: 'Market Quote API',
-      endpoint: 'GET /v1/quote?symbol=KC',
-      path: '/v1/quote',
-      price: 0.02,
+      agent: 'trip-planner',
+      service: 'Room Rates API',
+      endpoint: 'GET /v1/hotels/rates?hotelId=gion-lantern-house',
+      path: '/v1/hotels/rates',
+      price: 0.01,
       status: 'Not yet charged',
       charge: '',
     });
-    expect(rows[1]).toMatchObject({ day: '2026-11-03', time: '2026-11-03T00:00:30', endpoint: 'POST /v1/summarize', path: '/v1/summarize', status: 'Charged', charge: 'stl_9f2a…' });
+    expect(rows[1]).toMatchObject({ day: '2026-11-03', time: '2026-11-03T00:00:30', endpoint: 'POST /v1/hotels/reviews/summary', path: '/v1/hotels/reviews/summary', status: 'Charged', charge: 'stl_9f2a…' });
     expect(rows[2]).toMatchObject({ service: '/v1/unknown', endpoint: '/v1/unknown', path: '/v1/unknown', status: 'Not collected' });
-    expect(sellerRows([{ id: 'c', recordedAt: T, path: '/v1/quote', amount: 2, state: 'settling', settlementId: 'stl_x', agentRef: '3f9a1be1' }], catalog)[0]).toMatchObject({
+    expect(sellerRows([{ id: 'c', recordedAt: T, path: '/v1/hotels/rates', amount: 1, state: 'settling', settlementId: 'stl_x', agentRef: '3f9a1be1' }], catalog)[0]).toMatchObject({
       agent: 'Agent 3f9a1be1',
       status: 'Charging',
     });
@@ -111,16 +111,16 @@ describe('charge detail', () => {
   it('groups by service, with the same-price and the mixed-price rendering', () => {
     const groups = groupByService(
       [
-        { path: '/v1/quote?symbol=KC', amount: 2 },
-        { path: '/v1/quote?symbol=CC', amount: 2 },
-        { path: '/v1/summarize', amount: 5 },
-        { path: '/v1/summarize', amount: 4 },
+        { path: '/v1/hotels/rates?hotelId=gion-lantern-house', amount: 1 },
+        { path: '/v1/hotels/rates?hotelId=kamo-river-suites', amount: 1 },
+        { path: '/v1/hotels/reviews/summary', amount: 5 },
+        { path: '/v1/hotels/reviews/summary', amount: 4 },
       ],
       catalog,
     );
     expect(groups).toEqual([
-      { service: 'Page Summary API', calls: 2, totalCents: 9, text: '2 calls = $0.09' },
-      { service: 'Market Quote API', calls: 2, totalCents: 4, text: '2 × $0.02 = $0.04' },
+      { service: 'Review Summary API', calls: 2, totalCents: 9, text: '2 calls = $0.09' },
+      { service: 'Room Rates API', calls: 2, totalCents: 2, text: '2 × $0.01 = $0.02' },
     ]);
   });
 

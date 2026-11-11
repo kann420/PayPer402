@@ -12,10 +12,10 @@ export const METER_FULL = 500;
 
 export const CAPTIONS = [
   'Your agent calls a paid API.',
-  'The API answers 402: this call costs $0.02.',
+  'The API answers 402: this call costs $0.01.',
   'Jev checks the call serves the task. Code decides.',
   'The agent signs a payment promise. No human click.',
-  'PayPer402 checks it against your limits and adds $0.02 to the meter.',
+  'PayPer402 checks it against your limits and adds $0.01 to the meter.',
   '200 OK. The agent gets its data. No money has moved yet.',
   'Every paid call adds to the meter.',
   'Near $5.00, PayPer402 charges your PayPal account once…',
@@ -23,11 +23,11 @@ export const CAPTIONS = [
 ] as const;
 
 const SERVICES: readonly [string, number][] = [
-  ['Market Quote API', 2],
-  ['Page Summary API', 5],
-  ['Translate API', 1],
-  ['Market Quote API', 2],
-  ['Page Summary API', 5],
+  ['Room Rates API', 1],
+  ['Walking Time API', 1],
+  ['Hotel Search API', 2],
+  ['Room Rates API', 1],
+  ['Review Summary API', 5],
 ];
 
 export interface TickerState {
@@ -45,7 +45,7 @@ export interface TickerState {
   last: readonly [string, number];
 }
 
-export const initialTicker: TickerState = { h: 2, step: 0, st: 0, i: 0, cents: 420, charges: 3, flash: false, last: ['Translate API', 1] };
+export const initialTicker: TickerState = { h: 2, step: 0, st: 0, i: 0, cents: 420, charges: 3, flash: false, last: ['Walking Time API', 1] };
 
 /** The final hero stage, shown under reduced motion. */
 export const frozenTicker: TickerState = { ...initialTicker, h: HERO_TICKS - 1 };
@@ -94,7 +94,7 @@ export function pickStep(state: TickerState, step: number): TickerState {
 /** The hero meter in cents at a stage. */
 export function heroMeter(stage: number, sub: number): number {
   if (stage < 4) return 0;
-  if (stage < 6) return 2;
+  if (stage < 6) return 1;
   if (stage === 6) return [124, 318, 498][sub] ?? 498;
   if (stage === 7) return 500;
   return 0;

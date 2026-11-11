@@ -55,10 +55,10 @@ describe('the web app flow', () => {
     // 5. A run that pays two services.
     const sellerUrl = w.seller?.url as string;
     const first = fakeAnthropic([
-      message([{ type: 'text', text: 'I will buy the coffee quote, then one summary.' }, toolUse('list_services', {})]),
-      message([call('quote', { symbol: 'KC' }, 'Current price')]),
-      message([call('summarize', { url: `${sellerUrl}/news/coffee-highland-rains-delay-harvest` }, 'Top news')]),
-      message([finish('Coffee: price and top news (simulated data).')]),
+      message([{ type: 'text', text: 'I will check the rates, then the reviews.' }, toolUse('list_services', {})]),
+      message([call('hotel_rates', { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, 'Current price')]),
+      message([call('review_summary', { hotelId: 'higashiyama-stone-garden-inn', focus: 'noise at night' }, 'Is it quiet')]),
+      message([finish('The Stone Garden Inn fits (simulated data).')]),
     ]);
     const registry = new RunRegistry();
     const runDeps = (client: ReturnType<typeof fakeAnthropic>['client']): RunDeps => ({
@@ -67,17 +67,17 @@ describe('the web app flow', () => {
       runAgent,
       openSession: (options: OpenSessionOptions) => openSession({ ...options, nowSeconds: () => w.h.clock.now }),
     });
-    const runBody = { agentId: agent.agent.id, task: 'Brief me on coffee', budget: '1.00' };
+    const runBody = { agentId: agent.agent.id, task: 'Find me a quiet hotel in Kyoto', budget: '1.00' };
     const run1 = parseSse(await (await createRunsHandler(deps, runDeps(first.client))(w.request('/api/runs', { body: runBody }))).text());
     expect(run1.at(-1)).toEqual({ event: 'end', data: { status: 'completed' } });
     const paid = run1.filter((f) => f.event === 'agent' && (f.data as { type: string }).type === 'paid').map((f) => f.data as { commitmentId: string; amountCents: number });
-    expect(paid.map((p) => p.amountCents)).toEqual([2, 5]);
+    expect(paid.map((p) => p.amountCents)).toEqual([1, 5]);
 
     // 6. Charge now captures exactly the sum of the run's paid calls.
     const charge = await post(createSettleHandler(deps), '/api/operator/settlements');
     expect(charge.status).toBe(201);
-    expect(await body(charge)).toMatchObject({ settlement: { status: 'completed', amount: 7, callsCount: 2 } });
-    expect(w.h.paypal.callsOf('chargeVaultedWallet')).toEqual([[expect.objectContaining({ amountCents: 7 })]]);
+    expect(await body(charge)).toMatchObject({ settlement: { status: 'completed', amount: 6, callsCount: 2 } });
+    expect(w.h.paypal.callsOf('chargeVaultedWallet')).toEqual([[expect.objectContaining({ amountCents: 6 })]]);
     const settled = w.h.db.prepare(`SELECT id FROM commitments WHERE operator_id = ? AND state = 'settled'`).all(operatorId) as { id: string }[];
     expect(new Set(settled.map((c) => c.id))).toEqual(new Set(paid.map((p) => p.commitmentId)));
 
@@ -91,8 +91,8 @@ describe('the web app flow', () => {
 
     // 8. A second run gets exactly one refusal, wallet_revoked; the next call is answered locally.
     const second = fakeAnthropic([
-      message([call('quote', { symbol: 'KC' }, 'Current price')]),
-      message([call('quote', { symbol: 'CC' }, 'Cocoa too')]),
+      message([call('hotel_rates', { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, 'Current price')]),
+      message([call('hotel_rates', { hotelId: 'gion-lantern-house', checkIn: '2027-03-30', checkOut: '2027-04-02' }, 'Another hotel')]),
       message([finish('Payments were refused: the PayPal link was stopped.')]),
     ]);
     const run2 = parseSse(await (await createRunsHandler(deps, runDeps(second.client))(w.request('/api/runs', { body: runBody }))).text());

@@ -68,7 +68,7 @@ export function DemoPicker({ returning }: { returning: string | undefined }) {
             <strong className="text-[22px]">Seller demo</strong>
             <span className="text-base text-ink-700">I sell an API</span>
           </span>
-          <span className="border-t border-line-200 pt-3.5 font-mono text-[13px] text-ink-500">Acme Data · 4 priced endpoints</span>
+          <span className="border-t border-line-200 pt-3.5 font-mono text-[13px] text-ink-500">Acme Data · 5 priced endpoints</span>
           <span className="self-start rounded-[10px] border-[1.5px] border-ink-950 bg-white px-[18px] py-[11px] text-[15px] font-semibold text-ink-950">
             {busy === 'seller' ? 'Opening…' : 'Continue as seller →'}
           </span>

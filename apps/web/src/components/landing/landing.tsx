@@ -46,7 +46,7 @@ function useReducedMotion(): boolean {
 
 const STEPS = [
   ['01', 'Link PayPal once', "Approve on PayPal's page and set limits. That's your only click."],
-  ['02', 'Agent hits a paid API', 'The API answers 402 with a price, like $0.02.'],
+  ['02', 'Agent hits a paid API', 'The API answers 402 with a price, like $0.01.'],
   ['03', 'It signs and retries', 'A signed payment promise. The call goes through.'],
   ['04', 'One charge, later', 'Calls add up. We charge PayPal once near $5.00, or daily.'],
 ] as const;
@@ -55,11 +55,11 @@ const SUBS = [
   ['Search API · Pro', '$29/mo'],
   ['News API · Team', '$49/mo'],
   ['Maps API · Growth', '$99/mo'],
-  ['Translate API · Plus', '$19/mo'],
+  ['Reviews API · Plus', '$19/mo'],
   ['Weather API · Pro', '$15/mo'],
   ['Sentiment API · Basic', '$25/mo'],
   ['OCR API · Team', '$39/mo'],
-  ['Quotes API · Pro', '$29/mo'],
+  ['Hotel Data API · Pro', '$29/mo'],
 ] as const;
 
 const FAQ = [
@@ -113,8 +113,8 @@ function Hero({ state, paused, reduced, onTogglePause }: { state: TickerState; p
             <div className="ftrack">
               <div className="pline" />
               <div className="pline-on" style={{ background: '#0C0F0E', opacity: stage <= 6 ? 1 : 0 }} />
-              {stage === 0 ? <span key="s0" className="chip fwd" style={{ background: '#0C0F0E', color: '#FFFFFF' }}><span className="t">GET /quote</span></span> : null}
-              {stage === 1 ? <span key="s1" className="chip back" style={{ background: '#FFF1D6', color: '#6B4200', border: '1px solid #F0C978' }}><span className="t">402 · $0.02</span></span> : null}
+              {stage === 0 ? <span key="s0" className="chip fwd" style={{ background: '#0C0F0E', color: '#FFFFFF' }}><span className="t">GET /hotels/rates</span></span> : null}
+              {stage === 1 ? <span key="s1" className="chip back" style={{ background: '#FFF1D6', color: '#6B4200', border: '1px solid #F0C978' }}><span className="t">402 · $0.01</span></span> : null}
               {stage === 3 ? <span key="s3" className="chip fwd" style={{ background: '#5B3FD9', color: '#FFFFFF' }}><span className="t">signed promise</span></span> : null}
               {stage === 5 ? <span key="s5" className="chip back" style={{ background: '#2BE38A', color: '#0C0F0E' }}><span className="t">200 OK</span></span> : null}
               {stage === 6
@@ -156,7 +156,7 @@ function Hero({ state, paused, reduced, onTogglePause }: { state: TickerState; p
               </div>
               <strong style={strong}>Your agent</strong>
               <span className="mono" style={sub}>
-                research-bot
+                trip-planner
               </span>
             </div>
             <div className="ptrack" />
@@ -164,7 +164,7 @@ function Hero({ state, paused, reduced, onTogglePause }: { state: TickerState; p
               <div className="pbox" style={{ background: '#FFFFFF', border: '1.5px solid #E2E4DE', boxShadow: glow('meter') }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={LOGO} alt="" aria-hidden="true" style={{ width: '52%', height: '52%', display: 'block', objectFit: 'contain' }} />
-                {stage === 4 ? <span className="bdg" style={{ background: '#2BE38A', color: '#0C0F0E' }}>+$0.02</span> : null}
+                {stage === 4 ? <span className="bdg" style={{ background: '#2BE38A', color: '#0C0F0E' }}>+$0.01</span> : null}
                 {stage === 7 ? <span className="bdg" style={{ background: '#0C0F0E', color: '#2BE38A' }}>near $5.00</span> : null}
               </div>
               <strong style={strong}>PayPer402 meter</strong>
@@ -190,7 +190,7 @@ function Hero({ state, paused, reduced, onTogglePause }: { state: TickerState; p
               </div>
               <strong style={strong}>Paid API</strong>
               <span className="mono" style={sub}>
-                $0.02 / call
+                $0.01 / call
               </span>
             </div>
           </div>
@@ -286,9 +286,9 @@ function StepPanel({ step }: { step: number }) {
   if (step === 1) {
     return (
       <div key="s1" className="st mono" style={darkPanel}>
-        <span style={comment}># research-bot calls a paid API</span>
+        <span style={comment}># trip-planner calls a paid API</span>
         <span>
-          <span style={{ color: '#2BE38A' }}>GET</span> /v1/quote?symbol=KC
+          <span style={{ color: '#2BE38A' }}>GET</span> /v1/hotels/rates?hotelId=higashiyama-stone-garden-inn&amp;checkIn=2027-03-30&amp;checkOut=2027-04-02
         </span>
         <span style={{ marginTop: 10 }}>
           <span style={{ background: '#3A2A08', color: '#FFB020', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>HTTP/1.1 402 Payment Required</span>
@@ -300,9 +300,9 @@ function StepPanel({ step }: { step: number }) {
         <span>{'{ "x402Version": 2,'}</span>
         <span>{'  "accepts": [{ "scheme": "batch-settlement", "network": "paypal:sandbox",'}</span>
         <span>
-          {' '.repeat(16)}&quot;asset&quot;: &quot;USD&quot;, &quot;amount&quot;: <span style={{ color: '#FFB020', fontWeight: 700 }}>&quot;2&quot;</span>, &quot;payTo&quot;: &quot;sel_Qm2…&quot;{' }] }'}
+          {' '.repeat(16)}&quot;asset&quot;: &quot;USD&quot;, &quot;amount&quot;: <span style={{ color: '#FFB020', fontWeight: 700 }}>&quot;1&quot;</span>, &quot;payTo&quot;: &quot;sel_Qm2…&quot;{' }] }'}
         </span>
-        <span style={comment}># amount is in cents: $0.02</span>
+        <span style={comment}># amount is in cents: $0.01</span>
       </div>
     );
   }
@@ -311,7 +311,7 @@ function StepPanel({ step }: { step: number }) {
       <div key="s2" className="st mono" style={darkPanel}>
         <span style={comment}># signs a payment promise and retries</span>
         <span>
-          <span style={{ color: '#2BE38A' }}>GET</span> /v1/quote?symbol=KC
+          <span style={{ color: '#2BE38A' }}>GET</span> /v1/hotels/rates?hotelId=higashiyama-stone-garden-inn&amp;checkIn=2027-03-30&amp;checkOut=2027-04-02
         </span>
         <span>
           PAYMENT-SIGNATURE:{' '}
@@ -325,8 +325,8 @@ function StepPanel({ step }: { step: number }) {
         <span>
           PAYMENT-RESPONSE: <span style={{ color: '#C79BFF' }}>eyJzdWNjZXNzIjp0cnVlLCJ0cmFu…</span>
         </span>
-        <span>{'{ "symbol": "KC", "price": "…" }'}</span>
-        <span style={comment}># paid $0.02 · not yet charged</span>
+        <span>{'{ "hotelId": "higashiyama-stone-garden-inn", "averagePerNight": "…" }'}</span>
+        <span style={comment}># paid $0.01 · not yet charged</span>
       </div>
     );
   }
@@ -335,9 +335,9 @@ function StepPanel({ step }: { step: number }) {
     return (
       <div key="s3" className="st" style={{ width: '100%', background: '#FFFFFF', borderRadius: 20, padding: 20, boxShadow: '0 30px 60px -30px rgba(12,15,14,.3)', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
         {[
-          ['Market Quote API', '$0.02'],
-          ['Page Summary API', '$0.05'],
-          ['Translate API', '$0.01'],
+          ['Room Rates API', '$0.01'],
+          ['Hotel Search API', '$0.02'],
+          ['Review Summary API', '$0.05'],
         ].map(([n, p]) => (
           <div key={n} style={row}>
             <span>{n}</span>
@@ -538,7 +538,7 @@ export function Landing({ repoUrl }: { repoUrl: string | undefined }) {
               <div style={{ background: '#ECE8FF', padding: 28, height: 210, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div className="shake" style={{ width: '100%', maxWidth: 250, background: '#FFFFFF', borderRadius: 14, padding: 16, boxShadow: '0 12px 30px -12px rgba(58,39,153,.35)', display: 'flex', flexDirection: 'column', gap: 9, fontSize: 12 }}>
                   <strong style={{ fontSize: 14 }}>Create your account</strong>
-                  <div style={{ height: 28, border: '1px solid #E2E4DE', borderRadius: 8, display: 'flex', alignItems: 'center', padding: '0 10px', color: '#5B635F' }}>agent@research-bot</div>
+                  <div style={{ height: 28, border: '1px solid #E2E4DE', borderRadius: 8, display: 'flex', alignItems: 'center', padding: '0 10px', color: '#5B635F' }}>agent@trip-planner</div>
                   <div className="mono" style={{ height: 28, border: '1px solid #E2E4DE', borderRadius: 8, display: 'flex', alignItems: 'center', padding: '0 10px' }}>
                     ••••••••
                   </div>
@@ -741,7 +741,7 @@ export function Landing({ repoUrl }: { repoUrl: string | undefined }) {
               </div>
               <div style={{ background: '#FFFFFF', borderRadius: 18, padding: '4px 20px', boxShadow: '0 16px 36px -20px rgba(5,89,44,.45)' }}>
                 {[
-                  ['research-bot', '$1.84', '#0E9F5C'],
+                  ['trip-planner', '$1.84', '#0E9F5C'],
                   ['price-watcher', '$0.62', '#7C5CFF'],
                 ].map(([n, p, c]) => (
                   <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', borderBottom: '1px solid #EEF0EB', fontSize: 15 }}>
@@ -754,13 +754,13 @@ export function Landing({ repoUrl }: { repoUrl: string | undefined }) {
                 ))}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', fontSize: 15, color: '#4F5753' }}>
                   <span style={{ width: 9, height: 9, borderRadius: 2, background: '#B9BEB6' }} />
-                  <span className="mono">translator-01</span>
+                  <span className="mono">concierge-02</span>
                   <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>Paused</span>
                 </div>
               </div>
               <div style={{ background: '#0C0F0E', color: '#FFFFFF', borderRadius: 16, padding: '14px 16px', fontSize: 14 }}>
-                &quot;I skipped the premium news API ($0.25). The standard one covered it.&quot;
-                <div style={{ color: '#2BE38A', fontWeight: 700, marginTop: 4, fontSize: 13 }}>Spend report · research-bot</div>
+                &quot;I skipped the price forecast ($0.25). The rates I checked already answered it.&quot;
+                <div style={{ color: '#2BE38A', fontWeight: 700, marginTop: 4, fontSize: 13 }}>Spend report · trip-planner</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -785,9 +785,9 @@ export function Landing({ repoUrl }: { repoUrl: string | undefined }) {
             <div style={{ background: '#ECE8FF', borderRadius: 32, padding: 32, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ background: '#FFFFFF', borderRadius: 18, padding: '4px 20px', boxShadow: '0 16px 36px -20px rgba(58,39,153,.45)' }}>
                 {[
-                  ['GET', '/v1/quote', '$0.02'],
-                  ['POST', '/v1/summarize', '$0.05'],
-                  ['POST', '/v1/translate', '$0.01'],
+                  ['GET', '/v1/hotels/rates', '$0.01'],
+                  ['GET', '/v1/hotels/search', '$0.02'],
+                  ['POST', '/v1/hotels/reviews/summary', '$0.05'],
                 ].map(([m, p, price], k) => (
                   <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 0', borderBottom: k < 2 ? '1px solid #EEF0EB' : undefined, fontSize: 15 }}>
                     <span className="mono" style={{ fontWeight: 700, color: m === 'GET' ? '#087A3D' : '#5B3FD9' }}>
@@ -947,12 +947,12 @@ export function Landing({ repoUrl }: { repoUrl: string | undefined }) {
 
 const SPEC_SNIPPET = `import { paymentMiddleware } from "@x402/express";
 
-// $0.02 per call, settled with PayPal
+// $0.01 per call, settled with PayPal
 app.use(paymentMiddleware({
-  "GET /v1/quote": { accepts: { scheme: "batch-settlement", network: "paypal:sandbox",
-                                payTo: SELLER_ID, price: "$0.02" } },
+  "GET /v1/hotels/rates": { accepts: { scheme: "batch-settlement", network: "paypal:sandbox",
+                                payTo: SELLER_ID, price: "$0.01" } },
 }, resourceServer));
-app.get("/v1/quote", quoteHandler);
+app.get("/v1/hotels/rates", ratesHandler);
 `;
 
 function SpecCode() {
@@ -979,17 +979,17 @@ function SpecCode() {
       </div>
       <pre className="mono" style={{ margin: 0, padding: 24, fontSize: 13.5, lineHeight: 1.8, color: '#C5CEC9', overflowX: 'auto' }}>
         <span style={k}>import</span> {'{ paymentMiddleware }'} <span style={k}>from</span> <span style={s}>&quot;@x402/express&quot;</span>;{'\n\n'}
-        <span style={{ color: '#7E8A84' }}>{'// $0.02 per call, settled with PayPal'}</span>
+        <span style={{ color: '#7E8A84' }}>{'// $0.01 per call, settled with PayPal'}</span>
         {'\napp.'}
         <span style={c}>use</span>(<span style={c}>paymentMiddleware</span>
         {'({\n  '}
-        <span style={s}>&quot;GET /v1/quote&quot;</span>
+        <span style={s}>&quot;GET /v1/hotels/rates&quot;</span>
         {': { accepts: { scheme: '}
         <span style={s}>&quot;batch-settlement&quot;</span>, network: <span style={s}>&quot;paypal:sandbox&quot;</span>
         {',\n                                payTo: SELLER_ID, price: '}
-        <span style={s}>&quot;$0.02&quot;</span>
+        <span style={s}>&quot;$0.01&quot;</span>
         {' } },\n}, resourceServer));\napp.'}
-        <span style={c}>get</span>(<span style={s}>&quot;/v1/quote&quot;</span>, quoteHandler);
+        <span style={c}>get</span>(<span style={s}>&quot;/v1/hotels/rates&quot;</span>, ratesHandler);
       </pre>
     </div>
   );

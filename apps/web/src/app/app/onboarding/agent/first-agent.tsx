@@ -19,7 +19,7 @@ export function FirstAgent() {
       {claim !== null ? (
         <ClaimPanel info={claim} />
       ) : created === null ? (
-        <AgentNameForm initialName="research-bot" onCreated={setCreated} onClaim={setClaim} />
+        <AgentNameForm initialName="trip-planner" onCreated={setCreated} onClaim={setClaim} />
       ) : (
         <KeyPanel created={created} />
       )}

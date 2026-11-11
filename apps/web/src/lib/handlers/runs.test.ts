@@ -37,7 +37,7 @@ function fakeRun(overrides: Partial<RunDeps> = {}): RunDeps {
   };
 }
 
-const post = (handler: (r: Request) => Promise<Response>, payload: unknown = { agentId, task: 'Brief me on coffee', budget: '1.00' }) =>
+const post = (handler: (r: Request) => Promise<Response>, payload: unknown = { agentId, task: 'Find me a quiet hotel in Kyoto', budget: '1.00' }) =>
   handler(w.request('/api/runs', { body: payload }));
 
 const readAll = async (res: Response) => parseSse(await res.text());
@@ -151,17 +151,17 @@ describe('POST /api/runs: integration (harness, demo seller with fake AI, script
     w.h.activateWallet(operatorId);
     const sellerUrl = w.seller?.url as string;
     const claude = fakeAnthropic([
-      message([{ type: 'text', text: 'I will buy the quote, then a summary.' }, toolUse('list_services', {})]),
-      message([toolUse('call_service', { service_id: 'quote', params: { symbol: 'KC' }, reason: 'Current price' })]),
-      message([toolUse('call_service', { service_id: 'summarize', params: { url: `${sellerUrl}/news/coffee-highland-rains-delay-harvest` }, reason: 'Top news' })]),
-      message([toolUse('finish', { answer: 'Coffee is up (simulated data).', spend_explanation: 'I paid for a quote and a summary.' })]),
+      message([{ type: 'text', text: 'I will check the rates, then the reviews.' }, toolUse('list_services', {})]),
+      message([toolUse('call_service', { service_id: 'hotel_rates', params: { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, reason: 'Current price' })]),
+      message([toolUse('call_service', { service_id: 'review_summary', params: { hotelId: 'higashiyama-stone-garden-inn', focus: 'noise at night' }, reason: 'Is it quiet' })]),
+      message([toolUse('finish', { answer: 'The Stone Garden Inn fits (simulated data).', spend_explanation: 'I paid for rates and a review summary.' })]),
     ]);
     const handler = createRunsHandler(w.deps, fakeRun({ anthropic: () => claude.client }));
     const res = await post(handler);
     expect(res.headers.get('content-type')).toContain('text/event-stream');
     const frames = (await readAll(res)).filter((f) => f.event !== undefined);
     expect(frames[0]?.event).toBe('catalog');
-    expect((frames[0]?.data as { services: { id: string }[] }).services.map((s) => s.id)).toEqual(['quote', 'summarize', 'translate', 'premium_news']);
+    expect((frames[0]?.data as { services: { id: string }[] }).services.map((s) => s.id)).toEqual(['hotel_search', 'hotel_rates', 'review_summary', 'walking_time', 'price_forecast']);
     expect(frames.at(-1)).toEqual({ event: 'end', data: { status: 'completed' } });
     const events = frames.slice(1, -1).map((f) => {
       expect(f.event).toBe('agent');
@@ -170,7 +170,7 @@ describe('POST /api/runs: integration (harness, demo seller with fake AI, script
     expect(events[0]?.type).toBe('started');
     expect(events[1]).toMatchObject({ type: 'thinking' });
     const paid = events.filter((e) => e.type === 'paid');
-    expect(paid.map((e) => e.amountCents)).toEqual([2, 5]);
+    expect(paid.map((e) => e.amountCents)).toEqual([1, 5]);
     const ledger = await w.deps.facilitator.operator(w.session()?.operator?.key as string).commitments({ limit: 50 });
     expect(new Set(ledger.commitments.map((c) => c.id))).toEqual(new Set(paid.map((e) => e.commitmentId)));
     // The Claude request used the configured model, and the per-call limit min(caps.perCall, budget).
@@ -181,7 +181,7 @@ describe('POST /api/runs: integration (harness, demo seller with fake AI, script
 
   it('a wallet that is not linked ends in one refused wallet_not_linked', async () => {
     const claude = fakeAnthropic([
-      message([toolUse('call_service', { service_id: 'quote', params: { symbol: 'KC' }, reason: 'Current price' })]),
+      message([toolUse('call_service', { service_id: 'hotel_rates', params: { hotelId: 'higashiyama-stone-garden-inn', checkIn: '2027-03-30', checkOut: '2027-04-02' }, reason: 'Current price' })]),
       message([toolUse('finish', { answer: 'Payments were refused.', spend_explanation: 'Nothing was paid.' })]),
     ]);
     const frames = await readAll(await post(createRunsHandler(w.deps, fakeRun({ anthropic: () => claude.client }))));

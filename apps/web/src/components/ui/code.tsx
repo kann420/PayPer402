@@ -43,7 +43,7 @@ export function AgentSnippet() {
       {'}));'}
       {'\n'}
       <K>const</K> payingFetch = <C>wrapFetchWithPayment</C>(fetch, client);{'\n\n'}
-      <K>const</K> res = <K>await</K> <C>payingFetch</C>(<S>&quot;https://api.acme.example/v1/quote?symbol=KC&quot;</S>);
+      <K>const</K> res = <K>await</K> <C>payingFetch</C>(<S>&quot;https://api.acme.example/v1/hotels/search?city=kyoto&amp;checkIn=2027-03-30&amp;checkOut=2027-04-02&quot;</S>);
     </CodeBlock>
   );
 }

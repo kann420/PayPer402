@@ -15,7 +15,7 @@ export interface PaidCallRow {
   agent: string;
   service: string;
   endpoint: string;
-  /** The path without its query, for example `/v1/quote`: one bar per endpoint in the seller chart. */
+  /** The path without its query, for example `/v1/hotels/rates`: one bar per endpoint in the seller chart. */
   path: string;
   /** USD. */
   price: number;

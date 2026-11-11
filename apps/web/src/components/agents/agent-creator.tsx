@@ -169,7 +169,7 @@ export function AgentNameForm({
           className={`h-12 rounded-[10px] border-[1.5px] px-3 font-mono text-base outline-none focus:border-ink-950 ${shown === undefined ? 'border-line-300' : 'border-red-700'}`}
         />
         <span id="ag-name-help" className={shown === undefined ? 'text-[13px] text-ink-500' : 'text-[13px] font-semibold text-red-700'} role={shown === undefined ? undefined : 'alert'}>
-          {shown ?? 'Lowercase letters, digits and dashes, for example research-bot.'}
+          {shown ?? 'Lowercase letters, digits and dashes, for example trip-planner.'}
         </span>
       </div>
       <button type="submit" disabled={busy} className="mb-6 h-12 rounded-[10px] border-0 bg-ink-950 px-[18px] font-semibold text-white disabled:opacity-70">

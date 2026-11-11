@@ -259,7 +259,7 @@ export function LiveRun({
 
   const createBot = async () => {
     setCreating(true);
-    const res = await callApi<{ agent: { id: string } }>('/api/operator/agents', { name: 'research-bot' });
+    const res = await callApi<{ agent: { id: string } }>('/api/operator/agents', { name: 'trip-planner' });
     setCreating(false);
     if (!res.ok) {
       if (!handleEnded(res)) toast({ text: res.message, icon: 'error' });
@@ -353,7 +353,7 @@ export function LiveRun({
                   onClick={() => void createBot()}
                   className="h-11 rounded-[10px] border border-[var(--run-field-line)] bg-[var(--run-field-bg)] font-semibold text-[var(--run-text)]"
                 >
-                  {creating ? 'Creating…' : 'Create research-bot'}
+                  {creating ? 'Creating…' : 'Create trip-planner'}
                 </button>
                 <span className="text-xs text-[var(--run-muted)]">
                   The key is kept in this browser session. Create an agent on the Agents page to get a key you can keep.

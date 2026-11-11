@@ -23,10 +23,11 @@ const paid = (price, description) => ({
 });
 
 app.use(paymentMiddleware({
-  "GET /v1/quote":        paid("$0.02", "Market Quote API"),
-  "POST /v1/summarize":   paid("$0.05", "Page Summary API"),
-  "POST /v1/translate":   paid("$0.01", "Translate API"),
-  "GET /v1/news/premium": paid("$0.25", "Premium News API"),
+  "GET /v1/hotels/search":           paid("$0.02", "Hotel Search API"),
+  "GET /v1/hotels/rates":            paid("$0.01", "Room Rates API"),
+  "POST /v1/hotels/reviews/summary": paid("$0.05", "Review Summary API"),
+  "GET /v1/places/walk":             paid("$0.01", "Walking Time API"),
+  "GET /v1/hotels/forecast":         paid("$0.25", "Price Forecast API (premium)"),
 }, resourceServer));
 `;
 
@@ -65,13 +66,16 @@ export function IntegrationCard() {
         <S>&quot;application/json&quot;</S>,{'\n});\n\n'}
         app.<C>use</C>(<C>paymentMiddleware</C>
         {'({\n  '}
-        <S>&quot;GET /v1/quote&quot;</S>:{'        '}
-        <C>paid</C>(<S>&quot;$0.02&quot;</S>, <S>&quot;Market Quote API&quot;</S>),{'\n  '}
-        <S>&quot;POST /v1/summarize&quot;</S>:{'   '}
-        <C>paid</C>(<S>&quot;$0.05&quot;</S>, <S>&quot;Page Summary API&quot;</S>),{'\n  '}
-        <S>&quot;POST /v1/translate&quot;</S>:{'   '}
-        <C>paid</C>(<S>&quot;$0.01&quot;</S>, <S>&quot;Translate API&quot;</S>),{'\n  '}
-        <S>&quot;GET /v1/news/premium&quot;</S>: <C>paid</C>(<S>&quot;$0.25&quot;</S>, <S>&quot;Premium News API&quot;</S>),{'\n}, resourceServer));'}
+        <S>&quot;GET /v1/hotels/search&quot;</S>:{'           '}
+        <C>paid</C>(<S>&quot;$0.02&quot;</S>, <S>&quot;Hotel Search API&quot;</S>),{'\n  '}
+        <S>&quot;GET /v1/hotels/rates&quot;</S>:{'            '}
+        <C>paid</C>(<S>&quot;$0.01&quot;</S>, <S>&quot;Room Rates API&quot;</S>),{'\n  '}
+        <S>&quot;POST /v1/hotels/reviews/summary&quot;</S>:{' '}
+        <C>paid</C>(<S>&quot;$0.05&quot;</S>, <S>&quot;Review Summary API&quot;</S>),{'\n  '}
+        <S>&quot;GET /v1/places/walk&quot;</S>:{'             '}
+        <C>paid</C>(<S>&quot;$0.01&quot;</S>, <S>&quot;Walking Time API&quot;</S>),{'\n  '}
+        <S>&quot;GET /v1/hotels/forecast&quot;</S>:{'         '}
+        <C>paid</C>(<S>&quot;$0.25&quot;</S>, <S>&quot;Price Forecast API (premium)&quot;</S>),{'\n}, resourceServer));'}
       </pre>
     </section>
   );

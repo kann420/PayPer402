@@ -49,7 +49,7 @@ describe('landing ticker', () => {
 
   it('fills the hero meter by stage', () => {
     expect(heroMeter(0, 0)).toBe(0);
-    expect(heroMeter(4, 0)).toBe(2);
+    expect(heroMeter(4, 0)).toBe(1);
     expect(heroMeter(6, 2)).toBe(498);
     expect(heroMeter(7, 0)).toBe(500);
     expect(heroMeter(8, 0)).toBe(0);

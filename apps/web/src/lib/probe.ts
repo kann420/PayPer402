@@ -14,17 +14,22 @@ export interface ProbeResult {
   ms: number;
 }
 
-/** The fixed sample request of each demo service. The summarize body never names a real article. */
-export function sampleRequest(serviceId: string, sellerUrl: string): { query?: Record<string, string>; body?: Record<string, string> } | undefined {
+const STAY = { checkIn: '2027-03-30', checkOut: '2027-04-02' };
+const SAMPLE_HOTEL = 'higashiyama-stone-garden-inn';
+
+/** The fixed sample request of each demo service: the default stay at the sample hotel. */
+export function sampleRequest(serviceId: string): { query?: Record<string, string>; body?: Record<string, string> } | undefined {
   switch (serviceId) {
-    case 'quote':
-      return { query: { symbol: 'KC' } };
-    case 'summarize':
-      return { body: { url: `${sellerUrl}/news/x` } };
-    case 'translate':
-      return { body: { text: 'Hello', targetLanguage: 'Vietnamese' } };
-    case 'premium_news':
-      return { query: { topic: 'coffee' } };
+    case 'hotel_search':
+      return { query: { city: 'kyoto', ...STAY } };
+    case 'hotel_rates':
+      return { query: { hotelId: SAMPLE_HOTEL, ...STAY } };
+    case 'review_summary':
+      return { body: { hotelId: SAMPLE_HOTEL, focus: 'noise at night' } };
+    case 'walking_time':
+      return { query: { hotelId: SAMPLE_HOTEL, place: 'kiyomizu-dera' } };
+    case 'price_forecast':
+      return { query: { city: 'kyoto', ...STAY } };
     default:
       return undefined;
   }
@@ -42,7 +47,7 @@ export function decodePaymentRequired(header: string | null): unknown {
 
 export async function probe(options: { catalog: Catalog; serviceId: string; sellerUrl: string; fetch?: typeof fetch; now?: () => number }): Promise<ProbeResult | undefined> {
   const service = options.catalog.services.find((s) => s.id === options.serviceId);
-  const sample = sampleRequest(options.serviceId, options.sellerUrl);
+  const sample = sampleRequest(options.serviceId);
   if (service === undefined || sample === undefined) return undefined;
   const url = new URL(service.path, options.sellerUrl);
   for (const [k, v] of Object.entries(sample.query ?? {})) url.searchParams.set(k, v);

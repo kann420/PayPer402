@@ -30,7 +30,7 @@ describe('facilitator client', () => {
     const operatorId = created.operator.id;
     const { agentId } = h.addAgent(operatorId);
     h.activateWallet(operatorId);
-    h.addCommitment({ operatorId, agentId, payTo: w.sellerId, amount: 3, resourceUrl: 'http://seller.test/v1/quote?symbol=KC' });
+    h.addCommitment({ operatorId, agentId, payTo: w.sellerId, amount: 3, resourceUrl: 'http://seller.test/v1/hotels/rates?hotelId=gion-lantern-house' });
     h.addCommitment({ operatorId, agentId, payTo: w.sellerId, amount: 5 });
 
     const view = await op.get();
