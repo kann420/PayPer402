@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BLOCKING_REFUSALS, type AgentEvent, type SpendReport } from '@payper402/agent';
-import { BLOCKING_CODES, decisionLayerLine, endCard, initialRun, reduceRun, type RunView } from './timeline';
+import { BLOCKING_CODES, decisionLayerLine, endCard, initialRun, modelLabel, reduceRun, type RunView } from './timeline';
 
 const AT = Date.UTC(2026, 10, 2, 10, 42, 7);
 const catalog = {
@@ -188,5 +188,27 @@ describe('meter and end card', () => {
   it('records an error frame', () => {
     const view = reduceRun(initialRun(100), { event: 'error', data: { message: "The agent couldn't start: x" } });
     expect(view).toMatchObject({ phase: 'error', error: "The agent couldn't start: x" });
+  });
+});
+
+describe('LLM chip', () => {
+  it('names Claude model ids and keeps other ids as given', () => {
+    expect(modelLabel('claude-sonnet-5-5')).toBe('Claude Sonnet 5.5');
+    expect(modelLabel('claude-opus-5-5')).toBe('Claude Opus 5.5');
+    expect(modelLabel('claude-haiku-5-5-20261001')).toBe('Claude Haiku 5.5');
+    expect(modelLabel('claude-fable-5')).toBe('Claude Fable 5');
+    expect(modelLabel('some-other-model')).toBe('some-other-model');
+  });
+
+  it('puts the model on thinking rows only when the event names one', () => {
+    const view = play(
+      [
+        started,
+        { type: 'thinking', at: AT, note: 'Search first.', model: 'claude-sonnet-5-5' },
+        { type: 'thinking', at: AT, note: 'No model here.' },
+      ],
+      false,
+    );
+    expect(view.rows.map((r) => r.llm)).toEqual(['Claude Sonnet 5.5', undefined]);
   });
 });

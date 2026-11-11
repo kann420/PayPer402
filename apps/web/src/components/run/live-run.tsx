@@ -103,6 +103,9 @@ function Row({ row }: { row: TimelineRow }) {
         </div>
         <div className="text-[14.5px] break-words whitespace-pre-wrap text-[var(--run-row-text)]">{row.text}</div>
         {row.extra === undefined ? null : <div className="text-[13px] text-[var(--run-amber-text)]">{row.extra}</div>}
+        {row.llm === undefined ? null : (
+          <span className="mt-1 self-start rounded-md border border-[var(--run-chip-line)] bg-[var(--run-chip-bg)] px-2 py-0.5 font-mono text-[11px] text-[var(--run-chip-text)]">{row.llm}</span>
+        )}
         {row.jev === undefined ? null : (
           <span className="mt-1 self-start rounded-md border border-[var(--run-jev-line)] bg-[var(--run-jev-bg)] px-2 py-0.5 font-mono text-[11px] text-[var(--run-jev-text)]">{row.jev}</span>
         )}
@@ -241,8 +244,15 @@ export function LiveRun({
   const [running, setRunning] = useState(false);
   const [creating, setCreating] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const listRef = useRef<HTMLOListElement | null>(null);
+  // Follow new steps while the viewer is at the bottom; stop following once they scroll up to read.
+  const followRef = useRef(true);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => {
+    const list = listRef.current;
+    if (list !== null && followRef.current) list.scrollTop = list.scrollHeight;
+  }, [view.rows.length, view.phase]);
   useEffect(() => {
     if (agentId === '' && initialAgentId !== undefined) setAgentId(initialAgentId);
   }, [agentId, initialAgentId]);
@@ -273,6 +283,7 @@ export function LiveRun({
     if (running || agent === undefined || budgetCents === undefined || !taskOk) return;
     setRunning(true);
     let current: RunView = { ...initialRun(budgetCents), phase: 'running' };
+    followRef.current = true;
     setView(current);
     const controller = new AbortController();
     abortRef.current = controller;
@@ -428,7 +439,16 @@ export function LiveRun({
               Press Run. Each step of the agent appears here as it happens: prices, decisions, payments and refusals.
             </p>
           ) : null}
-          <ol aria-live="polite" className="m-0 flex list-none flex-col gap-2 p-0">
+          <ol
+            ref={listRef}
+            aria-live="polite"
+            tabIndex={view.rows.length > 0 ? 0 : -1}
+            onScroll={(event) => {
+              const el = event.currentTarget;
+              followRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+            }}
+            className="m-0 flex max-h-[min(640px,calc(100vh-200px))] min-h-0 list-none flex-col gap-2 overflow-y-auto overscroll-contain p-0 pr-1 [&>li]:shrink-0focus-visible:outline-2 focus-visible:outline-meter-600 max-sm:max-h-[70vh]"
+          >
             {view.rows.map((row) => (
               <Row key={row.key} row={row} />
             ))}

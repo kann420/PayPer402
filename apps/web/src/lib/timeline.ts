@@ -30,6 +30,16 @@ export interface TimelineRow {
   chipSub?: string;
   /** The decision-layer chip. */
   jev?: string;
+  /** The LLM chip of a thinking row ("Claude Sonnet 5.5"). */
+  llm?: string;
+}
+
+/** A readable name for a Claude model id: `claude-sonnet-5-5` → `Claude Sonnet 5.5`; other ids as given. */
+export function modelLabel(id: string): string {
+  const m = /^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:$|-)/.exec(id);
+  if (!m) return id;
+  const family = m[1]!.charAt(0).toUpperCase() + m[1]!.slice(1);
+  return `Claude ${family} ${m[2]}${m[3] === undefined ? '' : `.${m[3]}`}`;
 }
 
 export interface CatalogEntry {
@@ -89,8 +99,11 @@ export function rowFor(event: AgentEvent, view: Pick<RunView, 'catalog' | 'price
   switch (event.type) {
     case 'started':
       return undefined;
-    case 'thinking':
-      return { key, kind: 'thinking', label: 'Thinking', service: '', time, text: event.note };
+    case 'thinking': {
+      const row: TimelineRow = { key, kind: 'thinking', label: 'Thinking', service: '', time, text: event.note };
+      if (typeof event.model === 'string' && event.model !== '') row.llm = modelLabel(event.model);
+      return row;
+    }
     case 'discovered_price': {
       const service = view.catalog.find((s) => s.id === event.serviceId);
       const endpoint = service === undefined ? event.serviceName : `${service.method} ${service.path}`;
