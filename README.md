@@ -11,7 +11,7 @@ Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com) (Octo
 
 - **Live demo:** <https://payper402.xyz> (PayPal sandbox, test money only). The sandbox test
   accounts are in the testing instructions on Devpost.
-- **Demo video:** _link coming soon_
+- **Demo video:** <https://youtu.be/NgJ0oky0z4Q> (under 3 minutes)
 - **Proof it settles on PayPal:** [see below](#proof-it-settles-on-paypal)
 - **Binding spec:** [docs/spec/scheme_batch_settlement_paypal.md](docs/spec/scheme_batch_settlement_paypal.md)
 - **How it meets the judging criteria:** [see below](#judging-criteria)
@@ -77,7 +77,7 @@ Every feature was checked against the hackathon's five criteria before it was bu
 | **Design** | One product for three people: the **operator** (web app: link PayPal, set caps, manage agents, watch spending, charge, see a stopped link), the **seller** (revenue per endpoint, settlement status) and the **developer** (the `payper402` command and an MCP server for Claude Code and Claude Desktop). The unhappy paths are designed too: empty states, declined charges, a link stopped by the payer, paused and blocked agents. Live run shows each step and ends with a plain-English spend report whose numbers come from the ledger, never from the model ([`apps/web`](apps/web/src/components)). |
 | **Potential impact** | **Who:** teams whose AI agents need to buy data and tools on their own, and API sellers who want per-call revenue without crypto or a sign-up wall. **Why:** with a fixed fee of about $0.49 per US PayPal checkout transaction, charging a 2-cent call on its own would cost about 25 times the call. Batching signed commitments into one charge pays that fee once per batch. **Control:** caps per call, per day and in total, an unsettled cap that bounds credit, and "Stop paying with PayPal" blocking the agent on its next call, shown in the demo. |
 | **Innovation** | **A PayPal rail for x402.** x402 normally settles on a blockchain, and existing fiat approaches charge cards. PayPer402 defines an open x402 network binding for the PayPal wallet (`paypal:sandbox`, scheme `batch-settlement`), written in the style of the x402 scheme specs ([binding spec](docs/spec/scheme_batch_settlement_paypal.md)). **Postpaid micro-commitments** make cent-level pricing work on a rail with fixed fees, with credit risk bounded by design. **A second opinion before paying:** a separate calibrated model checks each call, and code makes the final decision. |
-| **Presentation** | **Demo video:** _link coming soon_. One story: the problem, link once, the agent pays per call, one PayPal charge, the dashboards, and "Stop paying with PayPal" blocking the agent. Judges can try it on the hosted demo at <https://payper402.xyz>, or replay the same story locally in seven steps ([Run it locally](#run-it-locally)). |
+| **Presentation** | **Demo video:** <https://youtu.be/NgJ0oky0z4Q>. One story: the problem, link once, the agent pays per call, one PayPal charge, the dashboards, and "Stop paying with PayPal" blocking the agent. Judges can try it on the hosted demo at <https://payper402.xyz>, or replay the same story locally in seven steps ([Run it locally](#run-it-locally)). |
 
 ## Sponsor prize
 
@@ -104,30 +104,17 @@ payer and merchant, so a revocation stops every operator that shares that paymen
 
 ## Proof it settles on PayPal
 
-PayPal has no public explorer like a blockchain does: every transaction is private to the two
-accounts involved, sandbox included. PayPer402 makes each charge checkable instead, in three
-independent ways.
+The charge in the [demo video](https://youtu.be/NgJ0oky0z4Q), on the PayPal sandbox:
 
-1. **The ids match on both sides.** Every PayPal charge is one Orders v2 capture, and PayPer402
-   sends its own charge id to PayPal as the order's `invoice_id`. So the charge page in PayPer402
-   and the payment in the payer's PayPal account show the same values:
+| | Value |
+|---|---|
+| PayPer402 charge id (PayPal invoice ID) | `stl_r9w3BstpesahF-tzV_zDaA` |
+| PayPal transaction (capture) ID | `4M443028VK142725B` |
+| Amount | $0.17 USD, for 8 paid calls, on November 11, 2026 |
 
-   | PayPer402 charge page | Payer's PayPal account (Activity → the payment) |
-   |---|---|
-   | Charge id `stl_…` | Invoice ID `stl_…` |
-   | PayPal capture id | Transaction ID |
-   | Amount and paid calls | Amount, and "PayPer402 usage: N paid calls" |
-
-2. **Verify with PayPal.** On any completed charge (PayPal charges → a charge), the button reads the
-   capture straight from the PayPal API and compares it with the ledger: capture found, status
-   `COMPLETED`, amount, currency, invoice id and order id. It writes nothing.
-3. **Log in and look.** With the sandbox test accounts from the Devpost testing instructions, open
-   <https://www.sandbox.paypal.com>. The Personal account shows each charge under Activity, and the
-   PayPer402 agreement under Settings → Payments → Automatic payments, where "Stop paying with
-   PayPal" revokes it. The Business account shows the same payments received.
-
-The demo video shows all three: a charge of $0.08 for three paid calls, its transaction in the
-payer's PayPal account, and the agreement being stopped.
+PayPer402 sends its charge id to PayPal as the order's invoice ID, so both sides show the same ids.
+Any completed charge can be checked against the PayPal API with **Verify with PayPal**. How to check
+a charge yourself: [docs/proof.md](docs/proof.md).
 
 ## Use of AI
 
