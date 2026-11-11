@@ -199,9 +199,11 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
       const endsWithText = toolUses.length === 0 && message.stop_reason === 'end_turn';
 
       // Rule 2: thinking rows, in order; the text of a rule-4 message is the answer instead.
+      // The model that answered is attached, since a fallback may differ from the requested one.
+      const by = typeof message.model === 'string' && message.model !== '' ? { model: message.model } : {};
       for (const block of message.content) {
-        if (block.type === 'thinking' && block.thinking.trim() !== '') session.emit({ type: 'thinking', note: block.thinking.trim() });
-        if (block.type === 'text' && !endsWithText && block.text.trim() !== '') session.emit({ type: 'thinking', note: block.text.trim() });
+        if (block.type === 'thinking' && block.thinking.trim() !== '') session.emit({ type: 'thinking', note: block.thinking.trim(), ...by });
+        if (block.type === 'text' && !endsWithText && block.text.trim() !== '') session.emit({ type: 'thinking', note: block.text.trim(), ...by });
       }
       if (text !== '') lastText = text;
 

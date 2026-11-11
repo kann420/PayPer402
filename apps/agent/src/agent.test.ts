@@ -145,6 +145,8 @@ describe('runAgent', () => {
       'Rates are cheap.',
       'Getting the rate.',
     ]);
+    // Each thinking row names the model that answered (the fake reports claude-opus-5-5).
+    expect(result.events.filter((e) => e.type === 'thinking').every((e) => e.type === 'thinking' && e.model === 'claude-opus-5-5')).toBe(true);
     expect(result.events[0]).toMatchObject({ type: 'started', sellerName: 'Acme Data', budgetCents: 100, maxPerCallCents: 10, task: TASK });
     expect(result.report.lines.map((l) => l.serviceId)).toEqual(['hotel_rates', 'walking_time']);
     expect(result.report.notUsed.map((s) => s.serviceId)).toEqual(['hotel_search', 'review_summary', 'price_forecast']);

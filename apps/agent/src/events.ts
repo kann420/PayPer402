@@ -48,7 +48,8 @@ export interface SpendReport {
 /** The Phase 4 event contract (design spec §4.6). `at` is unix milliseconds. Plain JSON. */
 export type AgentEvent =
   | { type: 'started'; at: number; sellerName: string; budgetCents: number; maxPerCallCents: number; task?: string }
-  | { type: 'thinking'; at: number; note: string }
+  /** `model` is the Claude model id that answered this message, as the API reported it. */
+  | { type: 'thinking'; at: number; note: string; model?: string }
   | {
       type: 'discovered_price';
       at: number;
